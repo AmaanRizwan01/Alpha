@@ -3,8 +3,9 @@
 ## Current Snapshot
 - **Active Phase:** Phase 0 — Fee & Venue Discovery
 - **Active Sprint:** Sprint 0.1 — Script scaffolding for fee & minNotional check
-- **Git Branch:** `main` (will branch to `feat/p0-s1-feasibility-cli`)
-- **Status:** Planning and workspace governance established. Ready to scaffold Phase 0 feasibility CLI.
+- **Git Branch:** `main` (ready to branch to `feat/p0-s1-feasibility-cli`)
+- **Environment:** Python 3.11.9, uv 0.11.15 installed; Rust toolchain to be installed in Phase 1
+- **Status:** Baseline complete and synced to GitHub. Ready to write Phase 0 feasibility CLI.
 
 ## Immediate Next Task
 Scaffold `python/scripts/phase0_feasibility.py` to inspect:
