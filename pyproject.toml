@@ -16,3 +16,6 @@ dependencies = [
 [tool.maturin]
 manifest-path = "rust/crates/alpha-py/Cargo.toml"
 module-name = "alpha_py"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
