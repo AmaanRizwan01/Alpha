@@ -8,6 +8,12 @@ pub enum NodeError {
     #[error("decimal conversion error: {0}")]
     DecimalError(#[from] rust_decimal::Error),
 
+    #[error("core calculation error: {0}")]
+    CoreError(#[from] alpha_core::CoreError),
+
+    #[error("type error: {0}")]
+    TypeError(#[from] alpha_types::TypeError),
+
     #[error("state error: {reason}")]
     StateError { reason: String },
 

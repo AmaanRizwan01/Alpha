@@ -14,8 +14,10 @@ pub mod bar;
 pub mod book;
 pub mod error;
 pub mod order;
+pub mod trade;
 
 pub use bar::Bar;
 pub use book::BookTop;
 pub use error::TypeError;
 pub use order::{OrderIntent, OrderType, Side, Venue};
+pub use trade::MarketTrade;
