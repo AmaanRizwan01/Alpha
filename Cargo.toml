@@ -5,6 +5,7 @@ members = [
     "rust/crates/alpha-core",
     "rust/crates/alpha-py",
     "rust/crates/alpha-venues",
+    "rust/crates/alpha-node",
 ]
 
 [workspace.package]
@@ -30,3 +31,4 @@ hmac = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
 hex = "0.4"
+rusqlite = { version = "0.31", features = ["bundled"] }

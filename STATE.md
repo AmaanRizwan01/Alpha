@@ -2,15 +2,15 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 4 (Live Execution Engine & Venue Drivers)
-- **Active Sprint:** Sprint 4.1 Signed Off -> Ready for Sprint 4.2 (`alpha-node` execution engine & state recovery)
-- **Git Branch:** `feat/p4-s1-alpha-venues`
+- **Active Sprint:** Sprint 4.2 Signed Off -> Ready for Sprint 4.3 (Fault Injection & Recovery Drills)
+- **Git Branch:** `feat/p4-s2-alpha-node-fsm`
 - **Environment:** Python 3.11.9, Rustc 1.99.1, Cargo 1.99.1, MSVC BuildTools 2022
-- **Status:** Sprint 4.1 completed with 100% test pass (32 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built `alpha-venues` crate covering OKX v5 atomic order builder (`attachAlgoOrds`), dead-man switch (`cancel-all-after`), WebSocket order book sequence tracking (`prevSeqId`), Binance Spot `OTOCO` atomic order list construction, and HMAC-SHA256 cryptographic signing.
+- **Status:** Sprint 4.2 completed with 100% test pass (44 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built `alpha-node` binary and library crate with embedded SQLite WAL migrations (`migrations/0001_state.sql`), crash-safe database manager (`db.rs`), cold-boot state reconciliation state machine (`reconcile.rs`), -6.0% equity drawdown circuit breaker, and operational CLI subcommands (`status`, `flatten`, `trade`, `record`).
 
 ## Immediate Next Task
-1. Review Sprint 4.1 diffs and commit to `feat/p4-s1-alpha-venues`.
-2. Merge `feat/p4-s1-alpha-venues` into `main` and push to GitHub.
-3. Start Sprint 4.2: build `alpha-node` execution engine with SQLite WAL state recovery (`migrations/0001_state.sql`) and execution FSM.
+1. Review Sprint 4.2 diffs and commit to `feat/p4-s2-alpha-node-fsm`.
+2. Merge `feat/p4-s2-alpha-node-fsm` into `main` and push to GitHub.
+3. Start Sprint 4.3: Fault Injection Drills & Phase 4 Gate Documentation.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -46,7 +46,10 @@
 - [x] Built OKX dead-man switch (`cancel-all-after` payload with 10–120s guard).
 - [x] Built OKX WebSocket order book sequencer verifying `prevSeqId == last_seq_id` and `-1` snapshot reset.
 - [x] Built Binance Spot atomic `OTOCO` parameter and query signer (`POST /api/v3/orderList/otoco`).
-- [x] 100% test pass (32 Rust workspace tests + 18 pytest tests passing).
+- [x] Built SQLite WAL state schema ([`migrations/0001_state.sql`](file:///c:/Coding/alpha/migrations/0001_state.sql)) with crash-safe journal and singleton guards.
+- [x] Built [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node) crate with bundled SQLite, embedded migrations, and cold-boot reconciliation FSM.
+- [x] Built 6.0% equity drawdown circuit breaker persisting halt state in SQLite.
+- [x] 100% test pass (44 Rust workspace tests + 18 pytest tests passing).
 
 ## Active Blockers / Decisions
-- None. Sprint 4.1 signed off and ready for commit & merge.
+- None. Sprint 4.2 signed off and ready for review, commit & merge.
