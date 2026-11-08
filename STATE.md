@@ -60,6 +60,7 @@
 - [x] Launched `alpha-node.service` and `alpha-heartbeat.timer` under systemd; verified 60s logging ticks.
 - [x] Tested operator emergency flatten drill: confirmed real Telegram alert dispatch, SQLite halt persistence, and node trade refusal across systemd restarts.
 - [x] Tested cold-boot recovery drill: cleared halt state and restored daemon to `RUNNING / HEALTHY`.
+- [x] Upgraded watchdog heartbeat (`deploy/scripts/heartbeat.sh`) with single-alert latch and recovery resolution message (zero notification spam).
 - [x] Compiled and signed off Phase 5 gate evidence file ([`docs/gates/PHASE-5.md`](file:///c:/Coding/alpha/docs/gates/PHASE-5.md)).
 
 ## Active Blockers / Decisions
