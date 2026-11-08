@@ -1,16 +1,16 @@
 # Project State & Handoff
 
 ## Current Snapshot
-- **Active Phase:** Phase 2 Complete -> Moving to Phase 4 (Live Execution Engine & Venue Drivers)
-- **Active Sprint:** Sprint 2.3 Signed Off -> Ready for Sprint 4.1 (`alpha-venues` atomic harness)
-- **Git Branch:** `feat/p2-s3-statistical-gates` (ready to merge into `main`)
+- **Active Phase:** Phase 4 (Live Execution Engine & Venue Drivers)
+- **Active Sprint:** Sprint 4.1 Signed Off -> Ready for Sprint 4.2 (`alpha-node` execution engine & state recovery)
+- **Git Branch:** `feat/p4-s1-alpha-venues`
 - **Environment:** Python 3.11.9, Rustc 1.99.1, Cargo 1.99.1, MSVC BuildTools 2022
-- **Status:** Phase 2 completed with 100% test pass (26 Rust tests + 18 pytest tests). Statistical validation suite ([`validate_gates.py`](file:///c:/Coding/alpha/python/research/validate_gates.py)) confirmed: Politis–Romano block bootstrap ($\text{LCB}_{95\%} = +0.0076R$, strictly positive), parameter perturbation stability ($\pm 20\%$ positive across all 7 nodes), and single-pass Stage B holdout $+2.82R$ ($+0.166R$ EV, max DD $3.81R$). Phase 2 evidence file documented in [`docs/gates/PHASE-2.md`](file:///c:/Coding/alpha/docs/gates/PHASE-2.md).
+- **Status:** Sprint 4.1 completed with 100% test pass (32 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built `alpha-venues` crate covering OKX v5 atomic order builder (`attachAlgoOrds`), dead-man switch (`cancel-all-after`), WebSocket order book sequence tracking (`prevSeqId`), Binance Spot `OTOCO` atomic order list construction, and HMAC-SHA256 cryptographic signing.
 
 ## Immediate Next Task
-1. Run git pre-merge verification (`cargo fmt`, `cargo clippy`, `cargo test`, `pytest`).
-2. Commit sprint 2.3 changes to `feat/p2-s3-statistical-gates`, merge into `main`, and push to GitHub.
-3. Create branch `feat/p4-s1-alpha-venues` to begin Phase 4 live execution engine.
+1. Review Sprint 4.1 diffs and commit to `feat/p4-s1-alpha-venues`.
+2. Merge `feat/p4-s1-alpha-venues` into `main` and push to GitHub.
+3. Start Sprint 4.2: build `alpha-node` execution engine with SQLite WAL state recovery (`migrations/0001_state.sql`) and execution FSM.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -41,7 +41,12 @@
 - [x] Verified parameter perturbation stability: all 7 grid nodes generated positive net return between $+19.73R$ and $+25.71R$ with net EV $+0.169R$ to $+0.230R$.
 - [x] Verified single-pass Stage B holdout (`2026-05-01` to `2026-11-01`): 17 trades, $+2.82R$ net return, $+0.166R$ EV, max DD $3.81R$, inside Stage A 95% bootstrap CI.
 - [x] Compiled and verified Phase 2 gate evidence file ([`docs/gates/PHASE-2.md`](file:///c:/Coding/alpha/docs/gates/PHASE-2.md)).
-- [x] 100% test pass (26 Rust tests + 18 pytest tests passing).
+- [x] Scaffolding of [`alpha-venues`](file:///c:/Coding/alpha/rust/crates/alpha-venues) with strict `#![forbid(unsafe_code)]` and zero clippy warnings.
+- [x] Built OKX v5 atomic order builder with `attachAlgoOrds` (`slTriggerPx`, `slOrdPx: "-1"`).
+- [x] Built OKX dead-man switch (`cancel-all-after` payload with 10–120s guard).
+- [x] Built OKX WebSocket order book sequencer verifying `prevSeqId == last_seq_id` and `-1` snapshot reset.
+- [x] Built Binance Spot atomic `OTOCO` parameter and query signer (`POST /api/v3/orderList/otoco`).
+- [x] 100% test pass (32 Rust workspace tests + 18 pytest tests passing).
 
 ## Active Blockers / Decisions
-- None. Phase 2 formally closed and signed off. Ready for merge and Phase 4 execution engine scaffolding.
+- None. Sprint 4.1 signed off and ready for commit & merge.
