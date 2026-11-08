@@ -67,7 +67,7 @@ fn handle_flatten(db_path: &str) -> Result<(), NodeError> {
 }
 
 fn handle_trade(target_path: &str) -> Result<(), NodeError> {
-    let (db_path, config_summary) = if target_path.ends_with(".toml") {
+    let (db_path, config_summary, interval_secs) = if target_path.ends_with(".toml") {
         let cfg = AppConfig::load_from_file(target_path)?;
         (
             cfg.system.database_path.clone(),
@@ -78,9 +78,14 @@ fn handle_trade(target_path: &str) -> Result<(), NodeError> {
                 cfg.risk.max_risk_per_trade,
                 cfg.risk.circuit_breaker_drawdown
             ),
+            cfg.monitoring.heartbeat_interval_secs,
         )
     } else {
-        (target_path.to_string(), "direct-db-path mode".to_string())
+        (
+            target_path.to_string(),
+            "direct-db-path mode".to_string(),
+            60,
+        )
     };
 
     let db = DbManager::open(&db_path)?;
@@ -90,12 +95,36 @@ fn handle_trade(target_path: &str) -> Result<(), NodeError> {
             "Refusing to start trade loop: Engine is halted ({})",
             reason.unwrap_or_default()
         );
-    } else {
+        return Ok(());
+    }
+
+    println!(
+        "Alpha trade daemon initialized on database: {} ({})",
+        db_path, config_summary
+    );
+    println!(
+        "Entering 24/7 daemon monitoring loop (interval: {}s)...",
+        interval_secs
+    );
+
+    let tick_interval = std::time::Duration::from_secs(interval_secs.max(5));
+    loop {
+        std::thread::sleep(tick_interval);
+        let (halted, reason) = db.get_halt_state()?;
+        if halted {
+            println!(
+                "Circuit breaker / operator halt detected ({}). Halting daemon loop.",
+                reason.unwrap_or_default()
+            );
+            break;
+        }
+        let (hwm, _, dd_pct) = db.get_equity_hwm()?;
         println!(
-            "Alpha trade daemon initialized on database: {} ({})",
-            db_path, config_summary
+            "[daemon-tick] engine healthy | HWM: {} | max_dd: {}%",
+            hwm, dd_pct
         );
     }
+
     Ok(())
 }
 
