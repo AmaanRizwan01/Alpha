@@ -1,4 +1,13 @@
 #![allow(unsafe_op_in_unsafe_fn, clippy::useless_conversion)]
+
+mod common;
+pub mod exits;
+pub mod strategy;
+
+use common::{dec_from_f64, f64_from_dec};
+use exits::{calc_initial_stop, simulate_trade_exit, PyExitResult};
+use strategy::{evaluate_h1, scan_h1_signals, PyH1Result};
+
 use alpha_core::{
     average_true_range, calculate_position_size, donchian_channel, kaufman_efficiency_ratio,
     ChopFilter, ChopVerdict, ExchangeFilter, FeeBudget,
@@ -6,7 +15,6 @@ use alpha_core::{
 use alpha_types::Bar;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
 
 #[pyclass]
@@ -26,18 +34,6 @@ pub struct PyPositionSize {
     pub stop_distance_pct: f64,
     #[pyo3(get)]
     pub risk_quote: f64,
-}
-
-fn dec_from_f64(val: f64, name: &'static str) -> PyResult<Decimal> {
-    Decimal::from_f64(val).ok_or_else(|| {
-        PyValueError::new_err(format!("invalid float for Decimal conversion: {name}"))
-    })
-}
-
-fn f64_from_dec(val: Decimal, name: &'static str) -> PyResult<f64> {
-    val.to_f64().ok_or_else(|| {
-        PyValueError::new_err(format!("invalid Decimal for float conversion: {name}"))
-    })
 }
 
 #[pyfunction]
@@ -210,10 +206,18 @@ pub fn evaluate_chop(
 #[pymodule]
 fn alpha_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPositionSize>()?;
+    m.add_class::<PyH1Result>()?;
+    m.add_class::<PyExitResult>()?;
+
     m.add_function(wrap_pyfunction!(kaufman_er, m)?)?;
     m.add_function(wrap_pyfunction!(atr, m)?)?;
     m.add_function(wrap_pyfunction!(donchian, m)?)?;
     m.add_function(wrap_pyfunction!(calc_position_size, m)?)?;
     m.add_function(wrap_pyfunction!(evaluate_chop, m)?)?;
+    m.add_function(wrap_pyfunction!(evaluate_h1, m)?)?;
+    m.add_function(wrap_pyfunction!(scan_h1_signals, m)?)?;
+    m.add_function(wrap_pyfunction!(calc_initial_stop, m)?)?;
+    m.add_function(wrap_pyfunction!(simulate_trade_exit, m)?)?;
+
     Ok(())
 }
