@@ -32,3 +32,4 @@ sha2 = "0.10"
 base64 = "0.22"
 hex = "0.4"
 rusqlite = { version = "0.31", features = ["bundled"] }
+toml = "0.8"

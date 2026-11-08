@@ -1,0 +1,12 @@
+[Unit]
+Description=Project Alpha Watchdog Heartbeat
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=alpha
+Group=alpha
+WorkingDirectory=/opt/alpha
+ExecStart=/opt/alpha/scripts/heartbeat.sh
+StandardOutput=journal
+StandardError=journal

@@ -10,10 +10,12 @@
     clippy::cast_sign_loss
 )]
 
+pub mod config;
 pub mod db;
 pub mod error;
 pub mod reconcile;
 
+use config::AppConfig;
 use db::DbManager;
 use error::NodeError;
 use std::env;
@@ -64,15 +66,48 @@ fn handle_flatten(db_path: &str) -> Result<(), NodeError> {
     Ok(())
 }
 
+fn handle_trade(target_path: &str) -> Result<(), NodeError> {
+    let (db_path, config_summary) = if target_path.ends_with(".toml") {
+        let cfg = AppConfig::load_from_file(target_path)?;
+        (
+            cfg.system.database_path.clone(),
+            format!(
+                "mode={}, symbols={:?}, max_risk={}, cb_drawdown={}",
+                cfg.system.mode,
+                cfg.universe.symbols,
+                cfg.risk.max_risk_per_trade,
+                cfg.risk.circuit_breaker_drawdown
+            ),
+        )
+    } else {
+        (target_path.to_string(), "direct-db-path mode".to_string())
+    };
+
+    let db = DbManager::open(&db_path)?;
+    let (is_halted, reason) = db.get_halt_state()?;
+    if is_halted {
+        println!(
+            "Refusing to start trade loop: Engine is halted ({})",
+            reason.unwrap_or_default()
+        );
+    } else {
+        println!(
+            "Alpha trade daemon initialized on database: {} ({})",
+            db_path, config_summary
+        );
+    }
+    Ok(())
+}
+
 fn print_usage() {
     println!("Project Alpha Node v0.1.0");
     println!("Usage: alpha-node <command> [options]");
     println!();
     println!("Commands:");
-    println!("  status [db_path]     Show engine state, HWM, and active positions");
-    println!("  flatten [db_path]    Emergency halt and trigger position liquidation");
-    println!("  trade [db_path]      Start 24/7 live trading execution daemon");
-    println!("  record [out_dir]     Start 24/7 top-of-book and trade recorder");
+    println!("  status [db_path]             Show engine state, HWM, and active positions");
+    println!("  flatten [db_path]            Emergency halt and trigger position liquidation");
+    println!("  trade [config_or_db_path]    Start 24/7 trading daemon (reads .toml or .db)");
+    println!("  record [out_dir]             Start 24/7 top-of-book and trade recorder");
 }
 
 fn main() -> Result<(), NodeError> {
@@ -81,26 +116,12 @@ fn main() -> Result<(), NodeError> {
     let target_path = args
         .get(2)
         .map(String::as_str)
-        .unwrap_or("data/alpha_state.db");
+        .unwrap_or("configs/paper.toml");
 
     match command {
         Some("status") => handle_status(target_path)?,
         Some("flatten") => handle_flatten(target_path)?,
-        Some("trade") => {
-            let db = DbManager::open(target_path)?;
-            let (is_halted, reason) = db.get_halt_state()?;
-            if is_halted {
-                println!(
-                    "Refusing to start trade loop: Engine is halted ({})",
-                    reason.unwrap_or_default()
-                );
-            } else {
-                println!(
-                    "Alpha trade daemon initialized on database: {}",
-                    target_path
-                );
-            }
-        }
+        Some("trade") => handle_trade(target_path)?,
         Some("record") => {
             println!("Alpha recorder initialized targeting: {}", target_path);
         }

@@ -13,4 +13,13 @@ pub enum NodeError {
 
     #[error("circuit breaker tripped: {reason}")]
     CircuitBreaker { reason: String },
+
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("toml parse error: {0}")]
+    Toml(#[from] toml::de::Error),
+
+    #[error("configuration error: {reason}")]
+    ConfigError { reason: String },
 }

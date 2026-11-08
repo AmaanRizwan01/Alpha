@@ -10,10 +10,12 @@
     clippy::cast_sign_loss
 )]
 
+pub mod config;
 pub mod db;
 pub mod error;
 pub mod reconcile;
 
+pub use config::AppConfig;
 pub use db::{DbManager, PositionRecord};
 pub use error::NodeError;
 pub use reconcile::{reconcile_cold_boot, ReconcileOutcome};

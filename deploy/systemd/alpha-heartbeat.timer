@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Project Alpha Watchdog Heartbeat every 60s
+After=alpha-node.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

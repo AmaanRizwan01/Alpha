@@ -1,0 +1,27 @@
+[Unit]
+Description=Project Alpha Trading Node (24/7 Paper Daemon)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=alpha
+Group=alpha
+WorkingDirectory=/opt/alpha
+EnvironmentFile=/opt/alpha/.env
+ExecStart=/opt/alpha/bin/alpha-node trade /opt/alpha/configs/paper.toml
+Restart=always
+RestartSec=5s
+
+# Hardening / Sandboxing
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/alpha/data
+NoNewPrivileges=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

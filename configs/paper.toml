@@ -1,0 +1,31 @@
+# Project Alpha — Paper Burn-In Configuration
+# Scale-Invariant 4h Swing Strategy on Proxmox VE (Debian 12 LXC)
+
+[system]
+mode = "paper"
+allow_live_orders = false
+log_level = "info"
+database_path = "data/alpha_state.db"
+
+[universe]
+venues = ["okx", "binance"]
+symbols = ["BTCUSDT", "ETHUSDT"]
+timeframe = "4h"
+
+[risk]
+# scale-invariant risk fractions (never hardcode dollars)
+max_risk_per_trade = 0.010       # 1.0% equity risk per trade (r)
+min_stop_distance = 0.022        # 2.20% minimum structural swing stop floor
+circuit_breaker_drawdown = 0.060 # -6.0% equity drop from HWM halts all trading
+max_open_positions = 2
+
+[execution]
+order_type = "post_only"         # maker priority
+maker_fee_bps = 8.0              # OKX Lv1 maker standard (or 0.0 on promotional pairs)
+taker_fee_bps = 10.0             # OKX Lv1 taker standard
+slippage_allowance_bps = 3.0     # max tolerance against top of book
+
+[monitoring]
+heartbeat_interval_secs = 60     # external Healthchecks.io ping cadence
+deadman_interval_secs = 20       # exchange cancel-all-after refresh cadence
+deadman_timeout_secs = 60        # exchange cancel-all-after expiry guard

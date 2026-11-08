@@ -1,16 +1,17 @@
 # Project State & Handoff
 
 ## Current Snapshot
-- **Active Phase:** Phase 4 Complete -> Ready for Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 4.3 Signed Off -> Ready for Sprint 5.1 (Proxmox Deployment & 24/7 Service Orchestration)
-- **Git Branch:** `feat/p4-s3-fault-drills-gate`
+- **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
+- **Active Sprint:** Sprint 5.1 Signed Off -> Ready for Sprint 5.2 (Proxmox LXC Execution & Live Paper Verification)
+- **Git Branch:** `feat/p5-s1-proxmox-paper-setup`
 - **Environment:** Python 3.11.9, Rustc 1.99.1, Cargo 1.99.1, MSVC BuildTools 2022
-- **Status:** Phase 4 completed with 100% test pass (49 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Execution core verified across OKX (`attachAlgoOrds`), Binance (`OTOCO`), dead-man switch, crash-safe SQLite WAL state recovery, -6.0% drawdown circuit breaker, and 5 passing fault injection drills. Phase 4 gate evidence documented in [`docs/gates/PHASE-4.md`](file:///c:/Coding/alpha/docs/gates/PHASE-4.md).
+- **Status:** Sprint 5.1 complete with 100% test pass (53 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Scaffolding complete for Proxmox Debian 12 LXC provisioning (`deploy/setup_lxc.sh`), systemd daemon & timer units (`alpha-node.service`, `alpha-heartbeat.service`, `alpha-heartbeat.timer`), external monitoring & Telegram emergency alerts (`heartbeat.sh`, `emergency_flatten.sh`), macroeconomic blackout windows (`configs/calendar_blackouts.json`), and paper execution config parser (`configs/paper.toml`, `alpha_node::config::AppConfig`).
 
 ## Immediate Next Task
-1. Review Sprint 4.3 diffs and commit to `feat/p4-s3-fault-drills-gate`.
-2. Merge `feat/p4-s3-fault-drills-gate` into `main` and push to GitHub.
-3. Power on Proxmox server and initiate Phase 5 Sprint 5.1 (Debian 12 LXC provisioning, systemd daemon, Healthchecks.io heartbeat).
+1. Power on Proxmox server / access Debian 12 LXC container.
+2. Transfer repository or deploy artifacts to `/opt/alpha` on Proxmox LXC.
+3. Run `deploy/setup_lxc.sh` inside the LXC container to provision dependencies, system user, permissions, and systemd units.
+4. Begin Sprint 5.2 (compiling `alpha-node` for Debian 12 LXC and starting the 24/7 paper trading service).
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -51,7 +52,17 @@
 - [x] Built 6.0% equity drawdown circuit breaker persisting halt state in SQLite.
 - [x] Built 5 hardware severance fault drills in [`tests/test_fault_drills.rs`](file:///c:/Coding/alpha/rust/crates/alpha-node/tests/test_fault_drills.rs) (power cuts, offline stops, rogue coin alarms, dead-man heartbeat).
 - [x] Compiled and signed off Phase 4 gate evidence file ([`docs/gates/PHASE-4.md`](file:///c:/Coding/alpha/docs/gates/PHASE-4.md)).
-- [x] 100% test pass (49 Rust workspace tests + 18 pytest tests passing).
+- [x] Initialized Phase 5 on dedicated branch `feat/p5-s1-proxmox-paper-setup`.
+- [x] Created `configs/paper.toml` specifying `allow_live_orders = false`, 1% risk per trade ($r$), 2.20% structural stop floor, -6.0% circuit breaker drawdown, and 4h swing timeframe.
+- [x] Created `configs/calendar_blackouts.json` specifying UTC blackout windows around FOMC, US CPI, and NFP releases.
+- [x] Updated `.env.example` with external monitoring variables (`HEALTHCHECKS_URL`, `TG_TOKEN`, `TG_CHAT_ID`) and saved active keys in gitignored `.env`.
+- [x] Dispatched and confirmed live Telegram test notification to operator phone (`message_id=267`).
+- [x] Implemented Proxmox watchdog heartbeat monitor (`deploy/scripts/heartbeat.sh`) pinging Healthchecks.io and sending Telegram crash/halt alerts.
+- [x] Implemented operator emergency flatten script (`deploy/scripts/emergency_flatten.sh`) with Telegram broadcast.
+- [x] Authored systemd service and timer units (`deploy/systemd/alpha-node.service`, `alpha-heartbeat.service`, `alpha-heartbeat.timer`) with strict LXC sandboxing.
+- [x] Authored automated idempotent Debian 12 LXC provisioning script (`deploy/setup_lxc.sh`).
+- [x] Added `toml = "0.8"` dependency and built validated `config.rs` inside `alpha-node` with unit test coverage.
+- [x] Verified full workspace test suite: 53 Rust tests + 18 pytest tests passing with zero clippy warnings.
 
 ## Active Blockers / Decisions
-- None. Phase 4 formally closed and signed off. Ready for merge and Phase 5 Proxmox paper burn-in.
+- None. Sprint 5.1 signed off. Ready for Sprint 5.2 deployment on Proxmox LXC.
