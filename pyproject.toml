@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "alpha-py"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "polars>=1.0",
+    "duckdb>=1.0",
+    "scipy>=1.14",
+    "pytest>=8.0",
+]
+
+[tool.maturin]
+manifest-path = "rust/crates/alpha-py/Cargo.toml"
+module-name = "alpha_py"
