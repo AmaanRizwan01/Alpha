@@ -1,16 +1,16 @@
 # Project State & Handoff
 
 ## Current Snapshot
-- **Active Phase:** Phase 4 (Live Execution Engine & Venue Drivers)
-- **Active Sprint:** Sprint 4.2 Signed Off -> Ready for Sprint 4.3 (Fault Injection & Recovery Drills)
-- **Git Branch:** `feat/p4-s2-alpha-node-fsm`
+- **Active Phase:** Phase 4 Complete -> Ready for Phase 5 (8-Week Paper Burn-In on Proxmox)
+- **Active Sprint:** Sprint 4.3 Signed Off -> Ready for Sprint 5.1 (Proxmox Deployment & 24/7 Service Orchestration)
+- **Git Branch:** `feat/p4-s3-fault-drills-gate`
 - **Environment:** Python 3.11.9, Rustc 1.99.1, Cargo 1.99.1, MSVC BuildTools 2022
-- **Status:** Sprint 4.2 completed with 100% test pass (44 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built `alpha-node` binary and library crate with embedded SQLite WAL migrations (`migrations/0001_state.sql`), crash-safe database manager (`db.rs`), cold-boot state reconciliation state machine (`reconcile.rs`), -6.0% equity drawdown circuit breaker, and operational CLI subcommands (`status`, `flatten`, `trade`, `record`).
+- **Status:** Phase 4 completed with 100% test pass (49 Rust tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Execution core verified across OKX (`attachAlgoOrds`), Binance (`OTOCO`), dead-man switch, crash-safe SQLite WAL state recovery, -6.0% drawdown circuit breaker, and 5 passing fault injection drills. Phase 4 gate evidence documented in [`docs/gates/PHASE-4.md`](file:///c:/Coding/alpha/docs/gates/PHASE-4.md).
 
 ## Immediate Next Task
-1. Review Sprint 4.2 diffs and commit to `feat/p4-s2-alpha-node-fsm`.
-2. Merge `feat/p4-s2-alpha-node-fsm` into `main` and push to GitHub.
-3. Start Sprint 4.3: Fault Injection Drills & Phase 4 Gate Documentation.
+1. Review Sprint 4.3 diffs and commit to `feat/p4-s3-fault-drills-gate`.
+2. Merge `feat/p4-s3-fault-drills-gate` into `main` and push to GitHub.
+3. Power on Proxmox server and initiate Phase 5 Sprint 5.1 (Debian 12 LXC provisioning, systemd daemon, Healthchecks.io heartbeat).
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -49,7 +49,9 @@
 - [x] Built SQLite WAL state schema ([`migrations/0001_state.sql`](file:///c:/Coding/alpha/migrations/0001_state.sql)) with crash-safe journal and singleton guards.
 - [x] Built [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node) crate with bundled SQLite, embedded migrations, and cold-boot reconciliation FSM.
 - [x] Built 6.0% equity drawdown circuit breaker persisting halt state in SQLite.
-- [x] 100% test pass (44 Rust workspace tests + 18 pytest tests passing).
+- [x] Built 5 hardware severance fault drills in [`tests/test_fault_drills.rs`](file:///c:/Coding/alpha/rust/crates/alpha-node/tests/test_fault_drills.rs) (power cuts, offline stops, rogue coin alarms, dead-man heartbeat).
+- [x] Compiled and signed off Phase 4 gate evidence file ([`docs/gates/PHASE-4.md`](file:///c:/Coding/alpha/docs/gates/PHASE-4.md)).
+- [x] 100% test pass (49 Rust workspace tests + 18 pytest tests passing).
 
 ## Active Blockers / Decisions
-- None. Sprint 4.2 signed off and ready for review, commit & merge.
+- None. Phase 4 formally closed and signed off. Ready for merge and Phase 5 Proxmox paper burn-in.
