@@ -11,11 +11,16 @@
 )]
 
 pub mod binance;
+pub mod binance_ws;
 pub mod error;
 pub mod okx;
 pub mod signer;
 
 pub use binance::{build_binance_atomic_otoco, BinanceOtocoParams};
+pub use binance_ws::{
+    BinanceCombinedStreamMessage, BinanceWsBookTicker, BinanceWsKlineData, BinanceWsKlineEvent,
+    BinanceWsMessage, BinanceWsTrade,
+};
 pub use error::VenueError;
 pub use okx::{
     build_okx_atomic_order, OkxAttachAlgo, OkxBookSequencer, OkxDeadManPayload, OkxOrderPayload,

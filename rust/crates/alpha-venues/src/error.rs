@@ -14,6 +14,9 @@ pub enum VenueError {
     #[error("serialization error: {reason}")]
     SerializationError { reason: String },
 
+    #[error("type validation error: {0}")]
+    TypeError(#[from] alpha_types::TypeError),
+
     #[error("exchange api rejection: code={code}, msg={message}")]
     ExchangeRejection { code: String, message: String },
 }
