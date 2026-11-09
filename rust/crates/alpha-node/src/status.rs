@@ -130,6 +130,26 @@ fn print_positions_and_orders(db: &DbManager, db_path: &str) -> Result<(), NodeE
     Ok(())
 }
 
+fn resolve_db_path(target_path: &str, raw_db_path: &str) -> String {
+    let p = std::path::Path::new(raw_db_path);
+    if p.exists() {
+        return raw_db_path.to_string();
+    }
+    if let Some(parent) = std::path::Path::new(target_path).parent() {
+        let c1 = parent.join(p);
+        if c1.exists() {
+            return c1.to_string_lossy().to_string();
+        }
+        if let Some(grandparent) = parent.parent() {
+            let c2 = grandparent.join(p);
+            if c2.exists() {
+                return c2.to_string_lossy().to_string();
+            }
+        }
+    }
+    raw_db_path.to_string()
+}
+
 pub fn display_status(target_path: &str) -> Result<(), NodeError> {
     let (db_path, config_info) = if target_path.ends_with(".toml") {
         let cfg = AppConfig::load_from_file(target_path)?;
@@ -137,7 +157,8 @@ pub fn display_status(target_path: &str) -> Result<(), NodeError> {
             "mode={}, symbols={:?}",
             cfg.system.mode, cfg.universe.symbols
         );
-        (cfg.system.database_path, Some(info))
+        let resolved = resolve_db_path(target_path, &cfg.system.database_path);
+        (resolved, Some(info))
     } else {
         (target_path.to_string(), None)
     };
