@@ -2,16 +2,14 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.4 Completed & Merged -> Ready for Proxmox Release Deploy
+- **Active Sprint:** Sprint 5.4 Deployed & Live on Proxmox LXC -> Ready for Sprint 5.5
 - **Git Branch:** `main`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.4 fully implemented and merged into `main` with 100% test pass (76 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Bounded FIFO `BarBuffer` with deduplication and temporal monotonicity guards. Live signal generator `evaluate_symbol_bar` in `signal.rs` combining Kaufman ER anti-chop ($\text{ER}_{24} \ge 0.30$), Donchian channel breakout, volume filter, taker buy ratio, 14-period ATR calculation, minimum 2.20% structural stop loss, scale-invariant position sizing, and 6.0% equity drawdown circuit breaker. Cold-boot REST kline bootstrap helper in `bootstrap.rs` fetching 50 closed bars from Binance public REST on startup. Cleanly partitioned `fill_recorder.rs` and `engine.rs`. All files strictly <= 250 lines and functions <= 40 lines.
+- **Status:** Sprint 5.4 fully implemented, merged to `main`, natively compiled, and deployed to live Proxmox LXC container (`alpha-node.service`). Bootstrap pre-warming verified: successfully loaded 50 bars for BTCUSDT and ETHUSDT via Binance REST on cold startup. Live combined WebSocket stream active and processing live feeds (`bookTicker`, `trade`, `kline_1h`, `kline_4h`). Watchdog heartbeat timer active (`alpha-heartbeat.timer`). 100% test pass on station (76 Rust workspace tests + 18 pytest tests), zero clippy warnings, zero unsafe code.
 
 ## Immediate Next Task
-1. Push `main` to remote GitHub (`git push origin main`).
-2. Pull latest `main` on Debian 12 LXC container (`192.168.1.230`).
-3. Compile release binary `cargo build --release -p alpha-node` and restart `alpha-node.service`.
-4. Inspect `journalctl -u alpha-node.service -n 50 -f` to verify cold-boot bootstrap klines loaded and live ticker/kline feed active.
+1. Sprint 5.5 Planning: Real-time Telegram trade & signal notifications (dispatching on order submit, fill, and exit) and `alpha-node status` live telemetry CLI inspection.
+2. Create dedicated feature branch `feat/p5-s5-telegram-telemetry-cli`.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
