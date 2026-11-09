@@ -19,7 +19,10 @@ pub mod error;
 pub mod fill_recorder;
 pub mod reconcile;
 pub mod signal;
+pub mod signal_dispatch;
 pub mod simulator;
+pub mod status;
+pub mod telegram;
 pub mod ws;
 
 pub use bootstrap::{fetch_binance_klines, parse_binance_kline_value};
@@ -31,4 +34,5 @@ pub use error::NodeError;
 pub use reconcile::{reconcile_cold_boot, ReconcileOutcome};
 pub use signal::{default_filter_for_symbol, evaluate_symbol_bar, LiveSignalVerdict};
 pub use simulator::{PaperFill, PaperPosition, PaperSimulator};
+pub use telegram::TelegramNotifier;
 pub use ws::{build_stream_url, connect_binance_stream, parse_ws_frame, LiveMarketEvent};

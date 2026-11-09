@@ -2,14 +2,15 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.4 Deployed & Live on Proxmox LXC -> Ready for Sprint 5.5
-- **Git Branch:** `main`
+- **Active Sprint:** Sprint 5.5 (Telegram Alerts & Live Telemetry CLI) Verified & Ready for LXC Deployment
+- **Git Branch:** `feat/p5-s5-telegram-telemetry-cli`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.4 fully implemented, merged to `main`, natively compiled, and deployed to live Proxmox LXC container (`alpha-node.service`). Bootstrap pre-warming verified: successfully loaded 50 bars for BTCUSDT and ETHUSDT via Binance REST on cold startup. Live combined WebSocket stream active and processing live feeds (`bookTicker`, `trade`, `kline_1h`, `kline_4h`). Watchdog heartbeat timer active (`alpha-heartbeat.timer`). 100% test pass on station (76 Rust workspace tests + 18 pytest tests), zero clippy warnings, zero unsafe code.
+- **Status:** Sprint 5.5 fully implemented and verified locally. Non-blocking Telegram alert dispatcher (`telegram.rs`), deep node status CLI (`status.rs`), and modular signal dispatch (`signal_dispatch.rs`) integrated into `TradeEngine`. 100% test pass on station (78 Rust workspace tests + 18 pytest tests), zero clippy warnings, zero unsafe code. All files strictly <= 250 lines and functions <= 40 lines.
 
 ## Immediate Next Task
-1. Sprint 5.5 Planning: Real-time Telegram trade & signal notifications (dispatching on order submit, fill, and exit) and `alpha-node status` live telemetry CLI inspection.
-2. Create dedicated feature branch `feat/p5-s5-telegram-telemetry-cli`.
+1. Stage and commit Sprint 5.5 to `feat/p5-s5-telegram-telemetry-cli`.
+2. Merge into `main` and push to GitHub.
+3. Deploy new release binary to Proxmox LXC container (`192.168.1.230`), restart `alpha-node.service`, and verify with `alpha-node status /opt/alpha/configs/paper.toml`.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -67,6 +68,7 @@
 - [x] Verified live Binance WebSocket stream connectivity in [`tests/test_live_ws_smoke.rs`](file:///c:/Coding/alpha/rust/crates/alpha-node/tests/test_live_ws_smoke.rs).
 - [x] Compiled and signed off Phase 5 gate evidence file ([`docs/gates/PHASE-5.md`](file:///c:/Coding/alpha/docs/gates/PHASE-5.md)).
 - [x] Implemented Sprint 5.4: FIFO `BarBuffer`, REST kline bootstrap (`bootstrap.rs`), live $H_1$ signal evaluator (`signal.rs`), fill recorder (`fill_recorder.rs`), and end-to-end paper order execution in `TradeEngine`.
+- [x] Implemented Sprint 5.5: Non-blocking asynchronous Telegram notifications (`telegram.rs`) for signals, fills, exits, circuit breakers, and startup; deep status CLI command (`status.rs` via `alpha-node status <config>`); extracted `signal_dispatch.rs`; 78 cargo tests + 18 pytest tests green.
 
 ## Active Blockers / Decisions
-- None. Sprint 5.4 ready for merge to `main` and container release deployment.
+- None. Ready for container release build and live status inspection on Proxmox LXC.

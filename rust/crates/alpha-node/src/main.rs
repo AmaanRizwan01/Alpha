@@ -19,7 +19,10 @@ pub mod error;
 pub mod fill_recorder;
 pub mod reconcile;
 pub mod signal;
+pub mod signal_dispatch;
 pub mod simulator;
+pub mod status;
+pub mod telegram;
 pub mod ws;
 
 use config::AppConfig;
@@ -34,43 +37,6 @@ fn current_time_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
     i64::try_from(now.as_millis()).unwrap_or(0)
-}
-
-fn handle_status(target_path: &str) -> Result<(), NodeError> {
-    let db_path = if target_path.ends_with(".toml") {
-        let cfg = AppConfig::load_from_file(target_path)?;
-        cfg.system.database_path
-    } else {
-        target_path.to_string()
-    };
-
-    let db = DbManager::open(&db_path)?;
-    let (is_halted, halt_reason) = db.get_halt_state()?;
-    let (hwm, eq, dd_pct) = db.get_equity_hwm()?;
-
-    println!("=== Alpha Node Status ===");
-    println!("Database: {}", db_path);
-    println!(
-        "Engine State: {}",
-        if is_halted {
-            format!("HALTED ({})", halt_reason.unwrap_or_default())
-        } else {
-            "RUNNING / HEALTHY".to_string()
-        }
-    );
-    println!("Current Equity: {}", eq);
-    println!("Equity High-Water Mark: {}", hwm);
-    println!("Current Max Drawdown: {}%", dd_pct);
-
-    for sym in &["BTCUSDT", "ETHUSDT", "BTC-USDT", "ETH-USDT"] {
-        if let Some(pos) = db.get_position(sym)? {
-            println!(
-                "Position [{}] on {}: qty={}, entry={}, stop={}",
-                pos.symbol, pos.venue, pos.qty, pos.entry_price, pos.current_stop_price
-            );
-        }
-    }
-    Ok(())
 }
 
 fn handle_flatten(target_path: &str) -> Result<(), NodeError> {
@@ -127,7 +93,7 @@ async fn main() -> Result<(), NodeError> {
         .unwrap_or("configs/paper.toml");
 
     match command {
-        Some("status") => handle_status(target_path)?,
+        Some("status") => status::display_status(target_path)?,
         Some("flatten") => handle_flatten(target_path)?,
         Some("trade") => handle_trade(target_path).await?,
         Some("record") => {

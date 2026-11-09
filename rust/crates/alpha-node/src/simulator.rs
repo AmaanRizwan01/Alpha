@@ -163,9 +163,7 @@ impl PaperSimulator {
             let pnl = (proceeds - fee) - entry_cost;
             self.cash_balance += proceeds - fee;
 
-            let trig_px = pos.trade.current_stop;
-            let sym = pos.symbol.clone();
-            let qty = pos.qty;
+            let (sym, qty, trig_px) = (pos.symbol.clone(), pos.qty, pos.trade.current_stop);
             self.active_position = None;
 
             return Ok(Some(PaperFill::StopLoss {
@@ -187,8 +185,7 @@ impl PaperSimulator {
                 let pnl = (proceeds - fee) - entry_cost;
                 self.cash_balance += proceeds - fee;
 
-                let sym = pos.symbol.clone();
-                let qty = pos.qty;
+                let (sym, qty) = (pos.symbol.clone(), pos.qty);
                 self.active_position = None;
 
                 return Ok(Some(PaperFill::TakeProfit {
@@ -235,8 +232,7 @@ impl PaperSimulator {
             let pnl = (proceeds - fee) - entry_cost;
             self.cash_balance += proceeds - fee;
 
-            let sym = pos.symbol.clone();
-            let qty = pos.qty;
+            let (sym, qty) = (pos.symbol.clone(), pos.qty);
             self.active_position = None;
 
             return Ok(Some(PaperFill::BarExit {

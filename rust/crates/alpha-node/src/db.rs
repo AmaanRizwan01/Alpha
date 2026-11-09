@@ -176,8 +176,7 @@ impl DbManager {
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
             let halted: i32 = row.get(0)?;
-            let reason: Option<String> = row.get(1)?;
-            Ok((halted == 1, reason))
+            Ok((halted == 1, row.get(1)?))
         } else {
             Ok((false, None))
         }
@@ -202,13 +201,13 @@ impl DbManager {
         )?;
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
-            let hwm_str: String = row.get(0)?;
-            let eq_str: String = row.get(1)?;
-            let dd_str: String = row.get(2)?;
+            let hwm: String = row.get(0)?;
+            let eq: String = row.get(1)?;
+            let dd: String = row.get(2)?;
             Ok((
-                Decimal::from_str(&hwm_str)?,
-                Decimal::from_str(&eq_str)?,
-                Decimal::from_str(&dd_str)?,
+                Decimal::from_str(&hwm)?,
+                Decimal::from_str(&eq)?,
+                Decimal::from_str(&dd)?,
             ))
         } else {
             Ok((Decimal::from(100), Decimal::from(100), Decimal::ZERO))
@@ -220,11 +219,8 @@ impl DbManager {
         current_equity: Decimal,
         now_ms: i64,
     ) -> Result<(Decimal, Decimal), NodeError> {
-        let (mut hwm, _, _) = self.get_equity_hwm()?;
-        if current_equity > hwm {
-            hwm = current_equity;
-        }
-
+        let (hwm, _, _) = self.get_equity_hwm()?;
+        let hwm = hwm.max(current_equity);
         let drawdown_pct = if hwm > Decimal::ZERO {
             ((hwm - current_equity) / hwm) * Decimal::from(100)
         } else {
