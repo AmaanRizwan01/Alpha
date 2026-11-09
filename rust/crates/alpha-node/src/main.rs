@@ -12,11 +12,15 @@
 
 pub mod config;
 pub mod db;
+pub mod engine;
 pub mod error;
 pub mod reconcile;
+pub mod simulator;
+pub mod ws;
 
 use config::AppConfig;
 use db::DbManager;
+use engine::TradeEngine;
 use error::NodeError;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,10 +32,17 @@ fn current_time_ms() -> i64 {
     i64::try_from(now.as_millis()).unwrap_or(0)
 }
 
-fn handle_status(db_path: &str) -> Result<(), NodeError> {
-    let db = DbManager::open(db_path)?;
+fn handle_status(target_path: &str) -> Result<(), NodeError> {
+    let db_path = if target_path.ends_with(".toml") {
+        let cfg = AppConfig::load_from_file(target_path)?;
+        cfg.system.database_path
+    } else {
+        target_path.to_string()
+    };
+
+    let db = DbManager::open(&db_path)?;
     let (is_halted, halt_reason) = db.get_halt_state()?;
-    let (hwm, _, dd_pct) = db.get_equity_hwm()?;
+    let (hwm, eq, dd_pct) = db.get_equity_hwm()?;
 
     println!("=== Alpha Node Status ===");
     println!("Database: {}", db_path);
@@ -43,6 +54,7 @@ fn handle_status(db_path: &str) -> Result<(), NodeError> {
             "RUNNING / HEALTHY".to_string()
         }
     );
+    println!("Current Equity: {}", eq);
     println!("Equity High-Water Mark: {}", hwm);
     println!("Current Max Drawdown: {}%", dd_pct);
 
@@ -57,8 +69,15 @@ fn handle_status(db_path: &str) -> Result<(), NodeError> {
     Ok(())
 }
 
-fn handle_flatten(db_path: &str) -> Result<(), NodeError> {
-    let db = DbManager::open(db_path)?;
+fn handle_flatten(target_path: &str) -> Result<(), NodeError> {
+    let db_path = if target_path.ends_with(".toml") {
+        let cfg = AppConfig::load_from_file(target_path)?;
+        cfg.system.database_path
+    } else {
+        target_path.to_string()
+    };
+
+    let db = DbManager::open(&db_path)?;
     let now_ms = current_time_ms();
     db.set_halt_state(true, Some("operator emergency flatten"), now_ms)?;
     println!("=== FLATTEN ENGAGED ===");
@@ -66,66 +85,21 @@ fn handle_flatten(db_path: &str) -> Result<(), NodeError> {
     Ok(())
 }
 
-fn handle_trade(target_path: &str) -> Result<(), NodeError> {
-    let (db_path, config_summary, interval_secs) = if target_path.ends_with(".toml") {
-        let cfg = AppConfig::load_from_file(target_path)?;
-        (
-            cfg.system.database_path.clone(),
-            format!(
-                "mode={}, symbols={:?}, max_risk={}, cb_drawdown={}",
-                cfg.system.mode,
-                cfg.universe.symbols,
-                cfg.risk.max_risk_per_trade,
-                cfg.risk.circuit_breaker_drawdown
-            ),
-            cfg.monitoring.heartbeat_interval_secs,
-        )
+async fn handle_trade(target_path: &str) -> Result<(), NodeError> {
+    let config_path = if target_path.ends_with(".toml") {
+        target_path
     } else {
-        (
-            target_path.to_string(),
-            "direct-db-path mode".to_string(),
-            60,
-        )
+        "configs/paper.toml"
     };
 
-    let db = DbManager::open(&db_path)?;
-    let (is_halted, reason) = db.get_halt_state()?;
-    if is_halted {
-        println!(
-            "Refusing to start trade loop: Engine is halted ({})",
-            reason.unwrap_or_default()
-        );
-        return Ok(());
-    }
-
+    let cfg = AppConfig::load_from_file(config_path)?;
     println!(
-        "Alpha trade daemon initialized on database: {} ({})",
-        db_path, config_summary
-    );
-    println!(
-        "Entering 24/7 daemon monitoring loop (interval: {}s)...",
-        interval_secs
+        "Alpha trade daemon initializing on database: {} (mode={}, symbols={:?})",
+        cfg.system.database_path, cfg.system.mode, cfg.universe.symbols
     );
 
-    let tick_interval = std::time::Duration::from_secs(interval_secs.max(5));
-    loop {
-        std::thread::sleep(tick_interval);
-        let (halted, reason) = db.get_halt_state()?;
-        if halted {
-            println!(
-                "Circuit breaker / operator halt detected ({}). Halting daemon loop.",
-                reason.unwrap_or_default()
-            );
-            break;
-        }
-        let (hwm, _, dd_pct) = db.get_equity_hwm()?;
-        println!(
-            "[daemon-tick] engine healthy | HWM: {} | max_dd: {}%",
-            hwm, dd_pct
-        );
-    }
-
-    Ok(())
+    let mut engine = TradeEngine::new(cfg)?;
+    engine.run(None).await
 }
 
 fn print_usage() {
@@ -133,13 +107,14 @@ fn print_usage() {
     println!("Usage: alpha-node <command> [options]");
     println!();
     println!("Commands:");
-    println!("  status [db_path]             Show engine state, HWM, and active positions");
-    println!("  flatten [db_path]            Emergency halt and trigger position liquidation");
-    println!("  trade [config_or_db_path]    Start 24/7 trading daemon (reads .toml or .db)");
-    println!("  record [out_dir]             Start 24/7 top-of-book and trade recorder");
+    println!("  status [config_or_db]       Show engine state, HWM, and active positions");
+    println!("  flatten [config_or_db]      Emergency halt and trigger position liquidation");
+    println!("  trade [config.toml]         Start 24/7 trading daemon with live WebSocket feed");
+    println!("  record [out_dir]            Start 24/7 top-of-book and trade recorder");
 }
 
-fn main() -> Result<(), NodeError> {
+#[tokio::main]
+async fn main() -> Result<(), NodeError> {
     let args: Vec<String> = env::args().collect();
     let command = args.get(1).map(String::as_str);
     let target_path = args
@@ -150,7 +125,7 @@ fn main() -> Result<(), NodeError> {
     match command {
         Some("status") => handle_status(target_path)?,
         Some("flatten") => handle_flatten(target_path)?,
-        Some("trade") => handle_trade(target_path)?,
+        Some("trade") => handle_trade(target_path).await?,
         Some("record") => {
             println!("Alpha recorder initialized targeting: {}", target_path);
         }

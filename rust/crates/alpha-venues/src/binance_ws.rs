@@ -183,9 +183,9 @@ mod tests {
         let json = r#"{"stream":"btcusdt@trade","data":{"s":"BTCUSDT","t":12345,"p":"65100.00","q":"0.05","T":1700000000000,"m":true}}"#;
         let msg: BinanceCombinedStreamMessage = serde_json::from_str(json).unwrap();
         assert_eq!(msg.stream, "btcusdt@trade");
-        match msg.data {
-            BinanceWsMessage::Trade(t) => assert_eq!(t.price, dec!(65100.00)),
-            _ => panic!("expected trade"),
+        assert!(matches!(msg.data, BinanceWsMessage::Trade(_)));
+        if let BinanceWsMessage::Trade(t) = msg.data {
+            assert_eq!(t.price, dec!(65100.00));
         }
     }
 }

@@ -79,12 +79,10 @@ mod tests {
     fn test_parse_book_ticker_frame() {
         let frame = r#"{"stream":"btcusdt@bookTicker","data":{"u":400900217,"s":"BTCUSDT","b":"65100.10","B":"1.50","a":"65101.20","A":"2.30"}}"#;
         let event = parse_ws_frame(frame, 1700000000000).unwrap();
-        assert!(event.is_some());
+        assert!(matches!(event, Some(LiveMarketEvent::BookTicker(_))));
         if let Some(LiveMarketEvent::BookTicker(top)) = event {
             assert_eq!(top.bid_price, dec!(65100.10));
             assert_eq!(top.ask_price, dec!(65101.20));
-        } else {
-            panic!("expected BookTicker");
         }
     }
 
@@ -92,13 +90,11 @@ mod tests {
     fn test_parse_trade_frame() {
         let frame = r#"{"stream":"btcusdt@trade","data":{"s":"BTCUSDT","t":999,"p":"65050.00","q":"0.25","T":1700000000000,"m":false}}"#;
         let event = parse_ws_frame(frame, 1700000000000).unwrap();
-        assert!(event.is_some());
+        assert!(matches!(event, Some(LiveMarketEvent::Trade(_))));
         if let Some(LiveMarketEvent::Trade(t)) = event {
             assert_eq!(t.symbol, "BTCUSDT");
             assert_eq!(t.price, dec!(65050.00));
             assert!(!t.is_buyer_maker);
-        } else {
-            panic!("expected Trade");
         }
     }
 
@@ -106,7 +102,7 @@ mod tests {
     fn test_parse_kline_frame() {
         let frame = r#"{"stream":"btcusdt@kline_1h","data":{"s":"BTCUSDT","k":{"t":1699990000000,"T":1700000000000,"s":"BTCUSDT","i":"1h","f":100,"L":200,"o":"64000.0","c":"65000.0","h":"65500.0","l":"63900.0","v":"150.0","n":1200,"x":true,"q":"9700000.0","V":"85.0","Q":"5500000.0","B":"0"}}}"#;
         let event = parse_ws_frame(frame, 1700000000000).unwrap();
-        assert!(event.is_some());
+        assert!(matches!(event, Some(LiveMarketEvent::Kline { .. })));
         if let Some(LiveMarketEvent::Kline {
             symbol,
             bar,
@@ -116,8 +112,6 @@ mod tests {
             assert_eq!(symbol, "BTCUSDT");
             assert!(is_closed);
             assert_eq!(bar.close, dec!(65000.0));
-        } else {
-            panic!("expected Kline");
         }
     }
 }
