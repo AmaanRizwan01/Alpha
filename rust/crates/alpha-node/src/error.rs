@@ -14,6 +14,12 @@ pub enum NodeError {
     #[error("type error: {0}")]
     TypeError(#[from] alpha_types::TypeError),
 
+    #[error("venue error: {0}")]
+    VenueError(#[from] alpha_venues::VenueError),
+
+    #[error("websocket error: {0}")]
+    WebSocket(String),
+
     #[error("state error: {reason}")]
     StateError { reason: String },
 
@@ -28,4 +34,10 @@ pub enum NodeError {
 
     #[error("configuration error: {reason}")]
     ConfigError { reason: String },
+}
+
+impl From<tokio_tungstenite::tungstenite::Error> for NodeError {
+    fn from(err: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::WebSocket(err.to_string())
+    }
 }
