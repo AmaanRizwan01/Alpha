@@ -34,6 +34,12 @@ pub enum NodeError {
 
     #[error("configuration error: {reason}")]
     ConfigError { reason: String },
+
+    #[error("buffer error: {reason}")]
+    BufferError { reason: String },
+
+    #[error("http request error: {0}")]
+    Http(#[from] reqwest::Error),
 }
 
 impl From<tokio_tungstenite::tungstenite::Error> for NodeError {

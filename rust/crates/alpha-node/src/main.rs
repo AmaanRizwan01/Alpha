@@ -10,11 +10,15 @@
     clippy::cast_sign_loss
 )]
 
+pub mod bootstrap;
+pub mod buffer;
 pub mod config;
 pub mod db;
 pub mod engine;
 pub mod error;
+pub mod fill_recorder;
 pub mod reconcile;
+pub mod signal;
 pub mod simulator;
 pub mod ws;
 

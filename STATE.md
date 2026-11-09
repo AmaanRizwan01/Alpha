@@ -2,16 +2,15 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.3 Complete -> Live WebSocket Feeds & Paper Fill Simulator Verified
-- **Git Branch:** `feat/p5-s3-live-ws-paper-sim`
+- **Active Sprint:** Sprint 5.4 Completed -> Ready for Merge & Proxmox Deploy
+- **Git Branch:** `feat/p5-s4-rolling-buffer-h1-signal`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.3 signed off with 100% test pass (69 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built pure-Rust async WebSocket client (`tokio-tungstenite` + `rustls` ring crypto provider) for Binance combined streams (`bookTicker`, `trade`, `kline_1h`). Built deterministic paper fill simulator with maker passive fill queue emulation, atomic stop ratchet ($E_0$ Chandelier trail, $E_1$ stagnation cut, $E_2$ breakeven), and fee/slippage tracking. Live market stream connectivity smoke tested against real Binance feeds.
+- **Status:** Sprint 5.4 fully implemented and verified with 100% test pass (76 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Bounded FIFO `BarBuffer` with deduplication and temporal monotonicity guards. Live signal generator `evaluate_symbol_bar` in `signal.rs` combining Kaufman ER anti-chop ($\text{ER}_{24} \ge 0.30$), Donchian channel breakout, volume filter, taker buy ratio, 14-period ATR calculation, minimum 2.20% structural stop loss, scale-invariant position sizing, and 6.0% equity drawdown circuit breaker. Cold-boot REST kline bootstrap helper in `bootstrap.rs` fetching 50 closed bars from Binance public REST on startup. Cleanly partitioned `fill_recorder.rs` and `engine.rs`. All files strictly <= 250 lines and functions <= 40 lines.
 
 ## Immediate Next Task
-1. Merge `feat/p5-s3-live-ws-paper-sim` into `main` and push to GitHub.
-2. Deploy latest release binary to Proxmox LXC container (`192.168.1.230`).
-3. Re-start `alpha-node.service` under systemd to begin streaming live market feeds and simulating paper execution.
-4. Monitor 8-week paper burn-in metrics: maker fill rates, slippage in bps, and circuit breaker stability.
+1. Stage and commit sprint 5.4 changes on `feat/p5-s4-rolling-buffer-h1-signal`.
+2. Merge branch to `main` and push to remote GitHub.
+3. Deploy latest release binary on Proxmox LXC container (`192.168.1.230`), restart `alpha-node.service`, and verify pre-warming + live feed in `journalctl`.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -68,6 +67,7 @@
 - [x] Integrated live feeds, paper matching, trailing ratchet, and SQLite WAL updates into `TradeEngine` in [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node/src/engine.rs).
 - [x] Verified live Binance WebSocket stream connectivity in [`tests/test_live_ws_smoke.rs`](file:///c:/Coding/alpha/rust/crates/alpha-node/tests/test_live_ws_smoke.rs).
 - [x] Compiled and signed off Phase 5 gate evidence file ([`docs/gates/PHASE-5.md`](file:///c:/Coding/alpha/docs/gates/PHASE-5.md)).
+- [x] Implemented Sprint 5.4: FIFO `BarBuffer`, REST kline bootstrap (`bootstrap.rs`), live $H_1$ signal evaluator (`signal.rs`), fill recorder (`fill_recorder.rs`), and end-to-end paper order execution in `TradeEngine`.
 
 ## Active Blockers / Decisions
-- None. Sprint 5.3 signed off. Ready for merge to `main` and container release deployment.
+- None. Sprint 5.4 ready for merge to `main` and container release deployment.
