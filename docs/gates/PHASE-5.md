@@ -3,7 +3,7 @@
 **Gate Status:** SIGNED OFF & OPERATIONAL  
 **Evaluation Date:** November 9, 2026  
 **Evaluator:** Lead Quantitative Rust/Python Systems Architect  
-**Git Branch:** `feat/p5-s2-proxmox-lxc` (targeting `main`)  
+**Git Branch:** `feat/p5-s3-live-ws-paper-sim` (targeting `main`)  
 **Target Infrastructure:** Local Proxmox VE Server (Debian 12 LXC CTID 101, Ajman, UAE)  
 **Assigned IP:** `192.168.1.230`  
 
@@ -11,18 +11,20 @@
 
 ## 1. Executive Summary & Verification Matrix
 
-Phase 5 transitions Project Alpha from local unit and fault-drill testing to 24/7 autonomous paper burn-in execution on local dedicated hardware. An unprivileged Debian 12 container was provisioned, secured, and equipped with the compiled release binary, external watchdog heartbeat, and operator emergency kill switch.
+Phase 5 transitions Project Alpha from local unit and fault-drill testing to 24/7 autonomous paper burn-in execution on local dedicated hardware. An unprivileged Debian 12 container was provisioned, secured, and equipped with the compiled release binary, external watchdog heartbeat, and operator emergency kill switch. Sprint 5.3 wired real-time WebSocket market feeds and a deterministic paper fill matching engine with zero unwrap/expect and pure-Rust TLS.
 
 | Gate Criteria | Requirement | Observed Metric / Result | Status |
 |---|---|---|---|
 | **LXC Provisioning** | Dedicated Debian 12 container on Proxmox VE | CTID `101` (`alpha-node`), 2 vCPUs, 2048 MB RAM, 16 GB rootfs on `local-lvm` | **PASSED** |
 | **Security Hardening** | Unprivileged execution & least-privilege permissions | `unprivileged 1`, user `alpha`, `chmod 600 .env`, `chmod 700 data`, `ProtectSystem=strict` | **PASSED** |
 | **Native Compilation** | Native Debian 12 release build without cross-compilation errors | Compiled via Rust 1.99.1 in 51s, zero warnings, zero unsafe code | **PASSED** |
-| **Systemd 24/7 Daemon** | Persistent background service with restart resilience | `alpha-node.service` running active, 656 KB memory footprint, 60s tick interval | **PASSED** |
+| **Systemd 24/7 Daemon** | Persistent background service with restart resilience | `alpha-node.service` running active, 656 KB memory footprint, async runtime | **PASSED** |
 | **Watchdog Heartbeat** | Independent external monitoring and health ping | `alpha-heartbeat.timer` executing `heartbeat.sh` every 60s, checking PID and DB | **PASSED** |
 | **Emergency Flatten Drill** | Immediate halt on operator kill switch with Telegram alert | `emergency_flatten.sh` sets SQLite halt state, delivers Telegram alert, stops loop | **PASSED** |
 | **Cold-Boot Recovery** | Clean resumption after halt state clearance | SQLite unhalt verified, daemon restarts to `RUNNING / HEALTHY` | **PASSED** |
-| **Workspace Test Suite** | 100% pass across Rust workspace and Python research | 53 Rust workspace tests + 18 pytest tests passing with zero clippy warnings | **PASSED** |
+| **Live WebSocket Feeds** | Combined stream parsing (`bookTicker`, `trade`, `kline`) with pure-Rust TLS | Verified live against Binance public stream; zero-loss JSON deserialization | **PASSED** |
+| **Paper Fill Simulator** | Deterministic passive fill matching, atomic stops, fee & slippage tracking | Maker queue simulation, E0/E1/E2 trailing ratchet, 0 panics | **PASSED** |
+| **Workspace Test Suite** | 100% pass across Rust workspace and Python research | 69 Rust workspace tests + 18 pytest tests passing with zero clippy warnings | **PASSED** |
 
 ---
 
@@ -67,6 +69,23 @@ The emergency kill switch was tested in the live container environment:
 
 ---
 
-## 4. Phase 5 Sign-Off & Incubation Window
+## 4. Sprint 5.3: Live WebSocket Feeds & Deterministic Paper Matching
 
-Sprint 5.1 and Sprint 5.2 are fully signed off. The Proxmox LXC node is now autonomously running the 8-week paper burn-in period. All operational, structural stop, circuit breaker, and alerting safety nets are verified in production.
+### Architectural Highlights
+1. **Zero-Loss WebSocket Deserializer (`alpha-venues`):**
+   - High-throughput deserialization for Binance combined streams: `bookTicker`, `trade`, `kline_1h`.
+   - All monetary fields, prices, and quantities strictly parsed to `rust_decimal::Decimal`.
+2. **Async Event Subscriber & Pure-Rust TLS (`alpha-node`):**
+   - Pure-Rust TLS using `tokio-tungstenite` and `rustls` with `ring` crypto provider (eliminating external C library or OpenSSL requirements on Proxmox LXC).
+   - Live stream smoke test (`tests/test_live_ws_smoke.rs`) connected to Binance Spot (`wss://stream.binance.com:9443`) and parsed real-world live quotes.
+3. **Deterministic Paper Fill Matching Engine:**
+   - Maker queue simulation: buy limit orders fill only when `ask <= limit_price` or live trade occurs at/below limit price.
+   - Atomic stops: simulated positions maintain atomic stop-loss triggers with high-water mark ratchets ($E_0$ Chandelier ATR trail, $E_1$ stagnation cut, $E_2$ breakeven).
+   - Accurate fee accounting: maker fee (0 bps for FDUSD, 10 bps for USDT) and taker fee deducted per trade, tracking exact net PnL and equity.
+   - Synchronized SQLite WAL logging: state transitions (`PENDING`, `OPEN`, `FILLED`, `CLOSED`) persisted atomically with crash safety.
+
+---
+
+## 5. Phase 5 Sign-Off & Incubation Window
+
+Sprints 5.1, 5.2, and 5.3 are signed off. The Proxmox LXC node executes the autonomous 8-week paper burn-in period with live market streaming, deterministic matching, structural stop floors, and real-time monitoring.

@@ -2,16 +2,16 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.2 Signed Off -> Autonomous 8-Week Paper Incubation Underway
-- **Git Branch:** `feat/p5-s2-proxmox-lxc`
+- **Active Sprint:** Sprint 5.3 Complete -> Live WebSocket Feeds & Paper Fill Simulator Verified
+- **Git Branch:** `feat/p5-s3-live-ws-paper-sim`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Phase 5 complete with 100% test pass (53 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Dedicated unprivileged Debian 12 LXC container (`alpha-node`, CTID 101) provisioned on Proxmox VE. 24/7 daemon service (`alpha-node.service`) and external watchdog timer (`alpha-heartbeat.timer`) actively running on `/opt/alpha`. Emergency flatten kill switch, Telegram broadcast alerts, and cold-boot SQLite reconciliation drills executed and verified. Official gate evidence committed in `docs/gates/PHASE-5.md`.
+- **Status:** Sprint 5.3 signed off with 100% test pass (69 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Built pure-Rust async WebSocket client (`tokio-tungstenite` + `rustls` ring crypto provider) for Binance combined streams (`bookTicker`, `trade`, `kline_1h`). Built deterministic paper fill simulator with maker passive fill queue emulation, atomic stop ratchet ($E_0$ Chandelier trail, $E_1$ stagnation cut, $E_2$ breakeven), and fee/slippage tracking. Live market stream connectivity smoke tested against real Binance feeds.
 
 ## Immediate Next Task
-1. Merge `feat/p5-s2-proxmox-lxc` into `main` and push to GitHub.
-2. Allow the Proxmox node to run autonomously during the 8-week paper burn-in incubation window.
-3. Track paper trading metrics: maker fill rates, slippage in bps against recorded order books, and circuit breaker stability.
-4. Prepare Phase 6 ($100 micro-live incubation configuration & deposit protocol).
+1. Merge `feat/p5-s3-live-ws-paper-sim` into `main` and push to GitHub.
+2. Deploy latest release binary to Proxmox LXC container (`192.168.1.230`).
+3. Re-start `alpha-node.service` under systemd to begin streaming live market feeds and simulating paper execution.
+4. Monitor 8-week paper burn-in metrics: maker fill rates, slippage in bps, and circuit breaker stability.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -61,7 +61,13 @@
 - [x] Tested operator emergency flatten drill: confirmed real Telegram alert dispatch, SQLite halt persistence, and node trade refusal across systemd restarts.
 - [x] Tested cold-boot recovery drill: cleared halt state and restored daemon to `RUNNING / HEALTHY`.
 - [x] Upgraded watchdog heartbeat (`deploy/scripts/heartbeat.sh`) with single-alert latch and recovery resolution message (zero notification spam).
+- [x] Built `MarketTrade` event in [`alpha-types`](file:///c:/Coding/alpha/rust/crates/alpha-types/src/trade.rs) with price and quantity validation.
+- [x] Implemented deterministic paper fill simulator in [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node/src/simulator.rs) with maker passive fills, atomic stop/take-profit triggers, and fees.
+- [x] Implemented zero-loss Binance WebSocket stream models and deserializers in [`alpha-venues`](file:///c:/Coding/alpha/rust/crates/alpha-venues/src/binance_ws.rs).
+- [x] Built pure-Rust async WebSocket subscriber and stream parser in [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node/src/ws.rs).
+- [x] Integrated live feeds, paper matching, trailing ratchet, and SQLite WAL updates into `TradeEngine` in [`alpha-node`](file:///c:/Coding/alpha/rust/crates/alpha-node/src/engine.rs).
+- [x] Verified live Binance WebSocket stream connectivity in [`tests/test_live_ws_smoke.rs`](file:///c:/Coding/alpha/rust/crates/alpha-node/tests/test_live_ws_smoke.rs).
 - [x] Compiled and signed off Phase 5 gate evidence file ([`docs/gates/PHASE-5.md`](file:///c:/Coding/alpha/docs/gates/PHASE-5.md)).
 
 ## Active Blockers / Decisions
-- None. Sprint 5.2 signed off. Phase 5 8-week paper burn-in actively running autonomously on Proxmox VE.
+- None. Sprint 5.3 signed off. Ready for merge to `main` and container release deployment.
