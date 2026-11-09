@@ -53,6 +53,7 @@ pub fn parse_ws_frame(text: &str, now_ms: i64) -> Result<Option<LiveMarketEvent>
 pub async fn connect_binance_stream(
     stream_url: &str,
 ) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, NodeError> {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let (stream, _) = tokio_tungstenite::connect_async(stream_url).await?;
     Ok(stream)
 }
