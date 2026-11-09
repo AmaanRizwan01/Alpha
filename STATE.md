@@ -2,15 +2,16 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.4 Completed -> Ready for Merge & Proxmox Deploy
-- **Git Branch:** `feat/p5-s4-rolling-buffer-h1-signal`
+- **Active Sprint:** Sprint 5.4 Completed & Merged -> Ready for Proxmox Release Deploy
+- **Git Branch:** `main`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.4 fully implemented and verified with 100% test pass (76 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Bounded FIFO `BarBuffer` with deduplication and temporal monotonicity guards. Live signal generator `evaluate_symbol_bar` in `signal.rs` combining Kaufman ER anti-chop ($\text{ER}_{24} \ge 0.30$), Donchian channel breakout, volume filter, taker buy ratio, 14-period ATR calculation, minimum 2.20% structural stop loss, scale-invariant position sizing, and 6.0% equity drawdown circuit breaker. Cold-boot REST kline bootstrap helper in `bootstrap.rs` fetching 50 closed bars from Binance public REST on startup. Cleanly partitioned `fill_recorder.rs` and `engine.rs`. All files strictly <= 250 lines and functions <= 40 lines.
+- **Status:** Sprint 5.4 fully implemented and merged into `main` with 100% test pass (76 Rust workspace tests + 18 pytest tests). Zero clippy warnings under strict `-D warnings`, zero unsafe code (`#![forbid(unsafe_code)]`). Bounded FIFO `BarBuffer` with deduplication and temporal monotonicity guards. Live signal generator `evaluate_symbol_bar` in `signal.rs` combining Kaufman ER anti-chop ($\text{ER}_{24} \ge 0.30$), Donchian channel breakout, volume filter, taker buy ratio, 14-period ATR calculation, minimum 2.20% structural stop loss, scale-invariant position sizing, and 6.0% equity drawdown circuit breaker. Cold-boot REST kline bootstrap helper in `bootstrap.rs` fetching 50 closed bars from Binance public REST on startup. Cleanly partitioned `fill_recorder.rs` and `engine.rs`. All files strictly <= 250 lines and functions <= 40 lines.
 
 ## Immediate Next Task
-1. Stage and commit sprint 5.4 changes on `feat/p5-s4-rolling-buffer-h1-signal`.
-2. Merge branch to `main` and push to remote GitHub.
-3. Deploy latest release binary on Proxmox LXC container (`192.168.1.230`), restart `alpha-node.service`, and verify pre-warming + live feed in `journalctl`.
+1. Push `main` to remote GitHub (`git push origin main`).
+2. Pull latest `main` on Debian 12 LXC container (`192.168.1.230`).
+3. Compile release binary `cargo build --release -p alpha-node` and restart `alpha-node.service`.
+4. Inspect `journalctl -u alpha-node.service -n 50 -f` to verify cold-boot bootstrap klines loaded and live ticker/kline feed active.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
