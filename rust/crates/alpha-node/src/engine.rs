@@ -150,6 +150,33 @@ impl TradeEngine {
         Ok(atr)
     }
 
+    fn check_heartbeat(&mut self, last_tick: &mut std::time::Instant) -> Result<bool, NodeError> {
+        if last_tick.elapsed().as_secs() < self.config.monitoring.heartbeat_interval_secs {
+            return Ok(false);
+        }
+        *last_tick = std::time::Instant::now();
+        let (halted, reason) = self.db.get_halt_state()?;
+        if halted {
+            let r = reason.unwrap_or_default();
+            println!("[engine] Halt engaged ({r}). Exiting loop.");
+            return Ok(true);
+        }
+        let (hwm, eq, dd) = self.db.get_equity_hwm()?;
+        println!(
+            "[daemon-tick] equity={eq} HWM={hwm} max_dd={dd}% | sim_cash={}",
+            self.simulator.cash_balance
+        );
+        Ok(false)
+    }
+
+    fn process_ws_text(&mut self, text: &str, now_ms: i64) {
+        if let Ok(Some(event)) = parse_ws_frame(text, now_ms) {
+            if let Err(e) = self.handle_market_event(event, now_ms) {
+                eprintln!("[engine warning] Event handling error: {e}");
+            }
+        }
+    }
+
     pub async fn run(&mut self, max_frames: Option<usize>) -> Result<(), NodeError> {
         crate::bootstrap::bootstrap_symbol_buffers(
             &self.config.universe.symbols,
@@ -161,45 +188,61 @@ impl TradeEngine {
             &self.config.universe.symbols,
             &[&self.config.universe.timeframe],
         );
-        println!("[ws] Connecting to Binance stream: {}", stream_url);
-        let mut ws = connect_binance_stream(&stream_url).await?;
-        println!("[ws] Connected. Live market feed active.");
-
         let (_, eq, _) = self.db.get_equity_hwm()?;
         self.telegram
             .notify_startup(&self.config.system.mode, &self.config.universe.symbols, eq);
 
         let mut count = 0;
         let mut last_tick = std::time::Instant::now();
-        while let Some(msg_result) = ws.next().await {
-            if let Message::Text(text) = msg_result? {
-                let now_ms = current_time_ms();
-                if let Some(event) = parse_ws_frame(&text, now_ms)? {
-                    self.handle_market_event(event, now_ms)?;
+
+        loop {
+            if self.db.get_halt_state()?.0 {
+                break;
+            }
+            println!("[ws] Connecting to Binance stream: {stream_url}");
+            let mut ws = match connect_binance_stream(&stream_url).await {
+                Ok(stream) => {
+                    println!("[ws] Connected. Live market feed active.");
+                    stream
                 }
-                count += 1;
-                if let Some(max) = max_frames {
-                    if count >= max {
+                Err(e) => {
+                    eprintln!("[ws warning] Connection failed: {e}. Retrying in 3s...");
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    continue;
+                }
+            };
+
+            while let Some(msg_result) = ws.next().await {
+                match msg_result {
+                    Ok(Message::Text(text)) => {
+                        let now_ms = current_time_ms();
+                        self.process_ws_text(&text, now_ms);
+                        count += 1;
+                        if max_frames.is_some_and(|max| count >= max) {
+                            return Ok(());
+                        }
+                    }
+                    Ok(Message::Ping(_)) => continue,
+                    Ok(Message::Close(_)) => {
+                        println!("[ws] Stream closed by remote. Reconnecting...");
+                        break;
+                    }
+                    Ok(_) => continue,
+                    Err(e) => {
+                        eprintln!("[ws warning] Stream error: {e}. Reconnecting...");
                         break;
                     }
                 }
-            }
-            if last_tick.elapsed().as_secs() >= self.config.monitoring.heartbeat_interval_secs {
-                let (halted, reason) = self.db.get_halt_state()?;
-                if halted {
-                    println!(
-                        "[engine] Halt engaged ({}). Exiting loop.",
-                        reason.unwrap_or_default()
-                    );
-                    break;
+
+                if self.check_heartbeat(&mut last_tick)? {
+                    return Ok(());
                 }
-                let (hwm, eq, dd) = self.db.get_equity_hwm()?;
-                println!(
-                    "[daemon-tick] equity={} HWM={} max_dd={}% | sim_cash={}",
-                    eq, hwm, dd, self.simulator.cash_balance
-                );
-                last_tick = std::time::Instant::now();
             }
+
+            if max_frames.is_some() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         }
         Ok(())
     }

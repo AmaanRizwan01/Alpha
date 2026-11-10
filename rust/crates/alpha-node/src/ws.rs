@@ -40,13 +40,22 @@ pub fn parse_ws_frame(text: &str, now_ms: i64) -> Result<Option<LiveMarketEvent>
     };
 
     let event = match msg.data {
-        BinanceWsMessage::BookTicker(b) => LiveMarketEvent::BookTicker(b.to_book_top(now_ms)?),
-        BinanceWsMessage::Trade(t) => LiveMarketEvent::Trade(t.to_market_trade()?),
-        BinanceWsMessage::Kline(k) => LiveMarketEvent::Kline {
-            symbol: k.symbol.clone(),
-            interval: k.kline.interval.clone(),
-            bar: k.to_bar()?,
-            is_closed: k.is_closed(),
+        BinanceWsMessage::BookTicker(b) => match b.to_book_top(now_ms) {
+            Ok(top) => LiveMarketEvent::BookTicker(top),
+            Err(_) => return Ok(None),
+        },
+        BinanceWsMessage::Trade(t) => match t.to_market_trade() {
+            Ok(trade) => LiveMarketEvent::Trade(trade),
+            Err(_) => return Ok(None),
+        },
+        BinanceWsMessage::Kline(k) => match k.to_bar() {
+            Ok(bar) => LiveMarketEvent::Kline {
+                symbol: k.symbol.clone(),
+                interval: k.kline.interval.clone(),
+                bar,
+                is_closed: k.is_closed(),
+            },
+            Err(_) => return Ok(None),
         },
     };
     Ok(Some(event))
