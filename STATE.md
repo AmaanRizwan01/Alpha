@@ -2,15 +2,14 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.5 (Telegram Alerts & Live Telemetry CLI) Verified & Ready for LXC Deployment
-- **Git Branch:** `feat/p5-s5-telegram-telemetry-cli`
+- **Active Sprint:** Sprint 5.6 (Interactive Telegram Bot & Action Buttons) Verified -> Deploying to LXC
+- **Git Branch:** `main`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.5 fully implemented and verified locally. Non-blocking Telegram alert dispatcher (`telegram.rs`), deep node status CLI (`status.rs`), and modular signal dispatch (`signal_dispatch.rs`) integrated into `TradeEngine`. 100% test pass on station (78 Rust workspace tests + 18 pytest tests), zero clippy warnings, zero unsafe code. All files strictly <= 250 lines and functions <= 40 lines.
+- **Status:** Sprint 5.6 fully implemented and verified. Deleted obsolete job-search webhook and commands from Telegram Bot; registered clean Project Alpha slash commands (`/status`, `/positions`, `/pnl`, `/orders`, `/flatten`, `/help`) and custom persistent reply keyboard (`📊 Status`, `📈 Positions`, `💰 PnL`, `📋 Orders`, `🚨 Flatten`, `ℹ️ Help`). Built pure-Rust async Telegram listener (`telegram_listener.rs`) executing queries and emergency flatten directly from phone. 100% test pass on station (79 Rust workspace tests + 18 pytest tests), zero clippy warnings, zero unsafe code.
 
 ## Immediate Next Task
-1. Stage and commit Sprint 5.5 to `feat/p5-s5-telegram-telemetry-cli`.
-2. Merge into `main` and push to GitHub.
-3. Deploy new release binary to Proxmox LXC container (`192.168.1.230`), restart `alpha-node.service`, and verify with `alpha-node status /opt/alpha/configs/paper.toml`.
+1. Stage and commit Sprint 5.6 changes to `main` and push to GitHub.
+2. Deploy release binary to Proxmox LXC container (`192.168.1.230`), restart `alpha-node.service`, and verify interactive Telegram button responses directly on mobile.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -69,6 +68,7 @@
 - [x] Compiled and signed off Phase 5 gate evidence file ([`docs/gates/PHASE-5.md`](file:///c:/Coding/alpha/docs/gates/PHASE-5.md)).
 - [x] Implemented Sprint 5.4: FIFO `BarBuffer`, REST kline bootstrap (`bootstrap.rs`), live $H_1$ signal evaluator (`signal.rs`), fill recorder (`fill_recorder.rs`), and end-to-end paper order execution in `TradeEngine`.
 - [x] Implemented Sprint 5.5: Non-blocking asynchronous Telegram notifications (`telegram.rs`) for signals, fills, exits, circuit breakers, and startup; deep status CLI command (`status.rs` via `alpha-node status <config>`); extracted `signal_dispatch.rs`; 78 cargo tests + 18 pytest tests green.
+- [x] Implemented Sprint 5.6: Interactive Telegram Bot listener (`telegram_listener.rs`) with deleted obsolete commands/webhooks, native Alpha slash commands (`/status`, `/positions`, `/pnl`, `/orders`, `/flatten`, `/help`), persistent custom action keyboard, and full mobile node control; 79 cargo tests + 18 pytest tests green.
 
 ## Active Blockers / Decisions
-- None. Ready for container release build and live status inspection on Proxmox LXC.
+- None. Ready for container release build and live Telegram mobile interaction test.

@@ -82,3 +82,52 @@ fn test_status_display_and_recent_orders() {
 
     let _ = fs::remove_file(test_db);
 }
+
+#[test]
+fn test_telegram_listener_commands_and_buttons() {
+    let _ = fs::create_dir_all("data");
+    let test_db = "data/test_tg_listener.db";
+    let _ = fs::remove_file(test_db);
+
+    let db = DbManager::open(test_db).unwrap();
+    let symbols = vec!["BTCUSDT".to_string(), "ETHUSDT".to_string()];
+
+    // 1. Status command & button
+    let rep1 =
+        alpha_node::telegram_listener::dispatch_command("/status", test_db, "paper", &symbols);
+    assert!(rep1.contains("Node Status"));
+    assert!(rep1.contains("RUNNING / HEALTHY"));
+
+    let rep2 =
+        alpha_node::telegram_listener::dispatch_command("📊 Status", test_db, "paper", &symbols);
+    assert_eq!(rep1, rep2);
+
+    // 2. Positions command & button
+    let pos_rep =
+        alpha_node::telegram_listener::dispatch_command("📈 Positions", test_db, "paper", &symbols);
+    assert!(pos_rep.contains("100% flat in cash"));
+
+    // 3. PnL command & button
+    let pnl_rep =
+        alpha_node::telegram_listener::dispatch_command("💰 PnL", test_db, "paper", &symbols);
+    assert!(pnl_rep.contains("PnL & Balance Overview"));
+
+    // 4. Orders command & button
+    let ord_rep =
+        alpha_node::telegram_listener::dispatch_command("📋 Orders", test_db, "paper", &symbols);
+    assert!(ord_rep.contains("No orders recorded"));
+
+    // 5. Help command & button
+    let help_rep =
+        alpha_node::telegram_listener::dispatch_command("ℹ️ Help", test_db, "paper", &symbols);
+    assert!(help_rep.contains("Telegram Controls"));
+
+    // 6. Flatten command & button
+    let flat_rep =
+        alpha_node::telegram_listener::dispatch_command("🚨 Flatten", test_db, "paper", &symbols);
+    assert!(flat_rep.contains("FLATTEN ENGAGED"));
+    let (is_halted, _) = db.get_halt_state().unwrap();
+    assert!(is_halted);
+
+    let _ = fs::remove_file(test_db);
+}

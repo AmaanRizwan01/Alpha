@@ -23,6 +23,7 @@ pub mod signal_dispatch;
 pub mod simulator;
 pub mod status;
 pub mod telegram;
+pub mod telegram_listener;
 pub mod ws;
 
 use config::AppConfig;
@@ -67,6 +68,20 @@ async fn handle_trade(target_path: &str) -> Result<(), NodeError> {
         "Alpha trade daemon initializing on database: {} (mode={}, symbols={:?})",
         cfg.system.database_path, cfg.system.mode, cfg.universe.symbols
     );
+
+    if let (Some(token), Some(chat_id)) = (
+        telegram::load_env_var("TELEGRAM_BOT_TOKEN", "TG_TOKEN"),
+        telegram::load_env_var("TELEGRAM_CHAT_ID", "TG_CHAT_ID"),
+    ) {
+        let listener_cfg = telegram_listener::ListenerConfig {
+            db_path: cfg.system.database_path.clone(),
+            mode: cfg.system.mode.clone(),
+            symbols: cfg.universe.symbols.clone(),
+            token,
+            authorized_chat_id: chat_id,
+        };
+        tokio::spawn(telegram_listener::run_telegram_listener(listener_cfg));
+    }
 
     let mut engine = TradeEngine::new(cfg)?;
     engine.run(None).await

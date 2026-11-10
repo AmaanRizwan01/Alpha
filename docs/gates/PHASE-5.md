@@ -86,6 +86,46 @@ The emergency kill switch was tested in the live container environment:
 
 ---
 
-## 5. Phase 5 Sign-Off & Incubation Window
+## 5. Sprint 5.4: FIFO Bar Buffer, REST Bootstrap & Live $H_1$ Signal Evaluator
 
-Sprints 5.1, 5.2, and 5.3 are signed off. The Proxmox LXC node executes the autonomous 8-week paper burn-in period with live market streaming, deterministic matching, structural stop floors, and real-time monitoring.
+### Architectural Highlights
+1. **FIFO Bar Buffer (`buffer.rs`):**
+   - High-performance, memory-capped 50-bar ring buffer rejecting duplicates and out-of-order bars.
+2. **REST Kline Bootstrap (`bootstrap.rs`):**
+   - Pre-warms the rolling buffer on cold boot via Binance REST (`GET /api/v3/klines?symbol={}&interval=4h&limit=50`).
+3. **Live $H_1$ Evaluator (`signal.rs`):**
+   - Pure-Rust evaluation of $H_1$ regime, ER chop filter ($\text{ER}_{24} \ge 0.45$), ATR volatility expansion ($\text{ATR}_{14} \ge 1.10 \times \text{ATR}_{48}$), 20-bar Donchian breakout, and taker volume ratio ($\ge 0.52$).
+4. **End-to-End Order Execution:**
+   - Evaluated on closed 4h bars, sizing risk at 1.0% ($r = 0.01$) with structural stop floor ($\ge 2.20\%$), dispatching atomic paper limit entry and protective stops into SQLite.
+
+---
+
+## 6. Sprint 5.5: Telegram Trade Alerts & Node Telemetry CLI
+
+### Architectural Highlights
+1. **Non-Blocking Alert Dispatcher (`telegram.rs`):**
+   - Asynchronous `tokio::spawn` notification delivery via `reqwest::Client`. Acts as safe no-op when unconfigured, protecting market event loops from blocking.
+   - Real-time formatters for startup, signal approvals, order submissions, maker fills, trailing stops, and circuit breaker halts.
+2. **Live Telemetry CLI (`status.rs`):**
+   - Operator command (`alpha-node status <config_or_db>`) querying SQLite WAL for engine state, equity HWM, drawdown headroom, active positions, and recent 5 orders.
+   - Automatic parent-directory database path resolution for out-of-tree invocation.
+
+---
+
+## 7. Sprint 5.6: Interactive Telegram Bot Controls & Reply Buttons
+
+### Architectural Highlights
+1. **Long-Polling Listener (`telegram_listener.rs`):**
+   - Zero-inbound-port HTTPS long-polling (`getUpdates`) running inside Proxmox LXC behind NAT.
+   - Strict authorization guarding: accepts commands exclusively from configured `TG_CHAT_ID`.
+2. **Interactive Slash Commands & Persistent Reply Buttons:**
+   - Overwrote old bot slash commands with native Project Alpha menu (`/status`, `/positions`, `/pnl`, `/orders`, `/flatten`, `/help`).
+   - Attached persistent custom reply keyboard (`📊 Status`, `📈 Positions`, `💰 PnL`, `📋 Orders`, `🚨 Flatten`, `ℹ️ Help`) ensuring instant mobile management without SSH.
+3. **Emergency Telegram Flatten:**
+   - Allows operator to trip the equity drawdown circuit breaker directly from Telegram with instant confirmation.
+
+---
+
+## 8. Phase 5 Sign-Off & Incubation Window
+
+Sprints 5.1 through 5.6 are signed off. The Proxmox LXC node executes the autonomous 8-week paper burn-in period with live market streaming, deterministic matching, structural stop floors, interactive Telegram bot management, and real-time monitoring.

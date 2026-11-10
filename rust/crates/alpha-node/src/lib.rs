@@ -23,6 +23,7 @@ pub mod signal_dispatch;
 pub mod simulator;
 pub mod status;
 pub mod telegram;
+pub mod telegram_listener;
 pub mod ws;
 
 pub use bootstrap::{fetch_binance_klines, parse_binance_kline_value};

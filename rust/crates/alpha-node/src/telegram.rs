@@ -11,6 +11,31 @@ pub struct TelegramNotifier {
     client: Client,
 }
 
+pub fn load_env_var(key1: &str, key2: &str) -> Option<String> {
+    if let Ok(val) = env::var(key1).or_else(|_| env::var(key2)) {
+        if !val.trim().is_empty() {
+            return Some(val);
+        }
+    }
+    for path in &[".env", "/opt/alpha/.env"] {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with('#') || !trimmed.contains('=') {
+                    continue;
+                }
+                let mut parts = trimmed.splitn(2, '=');
+                let k = parts.next().unwrap_or("").trim();
+                let v = parts.next().unwrap_or("").trim().trim_matches('"');
+                if (k == key1 || k == key2) && !v.is_empty() {
+                    return Some(v.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 impl TelegramNotifier {
     pub fn new(bot_token: Option<String>, chat_id: Option<String>) -> Self {
         let client = Client::builder()
@@ -25,13 +50,17 @@ impl TelegramNotifier {
     }
 
     pub fn from_env() -> Self {
-        let bot_token = env::var("TELEGRAM_BOT_TOKEN")
-            .ok()
-            .filter(|s| !s.trim().is_empty());
-        let chat_id = env::var("TELEGRAM_CHAT_ID")
-            .ok()
-            .filter(|s| !s.trim().is_empty());
+        let bot_token = load_env_var("TELEGRAM_BOT_TOKEN", "TG_TOKEN");
+        let chat_id = load_env_var("TELEGRAM_CHAT_ID", "TG_CHAT_ID");
         Self::new(bot_token, chat_id)
+    }
+
+    pub fn token(&self) -> Option<&str> {
+        self.bot_token.as_deref()
+    }
+
+    pub fn chat_id(&self) -> Option<&str> {
+        self.chat_id.as_deref()
     }
 
     pub fn is_configured(&self) -> bool {
@@ -51,7 +80,16 @@ impl TelegramNotifier {
                 let payload = json!({
                     "chat_id": chat,
                     "text": text,
-                    "parse_mode": "HTML"
+                    "parse_mode": "HTML",
+                    "reply_markup": {
+                        "keyboard": [
+                            [{"text": "📊 Status"}, {"text": "📈 Positions"}],
+                            [{"text": "💰 PnL"}, {"text": "📋 Orders"}],
+                            [{"text": "🚨 Flatten"}, {"text": "ℹ️ Help"}]
+                        ],
+                        "resize_keyboard": true,
+                        "is_persistent": true
+                    }
                 });
                 if let Err(e) = client.post(&url).json(&payload).send().await {
                     eprintln!("[telegram warning] alert failed: {e}");
