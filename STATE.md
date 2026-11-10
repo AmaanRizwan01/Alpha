@@ -2,14 +2,14 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.7 (Stream Interval Isolation & 24/7 Resilience) Verified & Deployed
+- **Active Sprint:** Sprint 5.8 (WebSocket Reconnection Resilience & Zero-Spam Loop) Verified & Committed
 - **Git Branch:** `main`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Resolved daemon restart loop caused by Binance WebSocket kline interval clash. When `build_stream_url` requested both `1h` and `4h`, both frames arrived simultaneously at 4h boundaries; the 1h bar was pushed first, causing the subsequent 4h bar to trigger `BufferError::OutOfOrder` and terminate the daemon. Added `interval: String` to `LiveMarketEvent::Kline`, restricted `build_stream_url` to `&[&config.universe.timeframe]`, enforced strict timeframe matching in `handle_market_event`, and made buffer errors non-fatal. Pushed to `main` (`72f7813`), deployed release build to Proxmox LXC (`192.168.1.230`), and confirmed `alpha-node.service` running cleanly without restarts.
+- **Status:** Resolved daemon restart and Telegram spam loops. Diagnosed root cause of periodic exits: unhandled WebSocket stream disconnects, Ping/Pong drops, and fatal `?` error propagation on live ticks caused `engine.run()` to exit, triggering systemd's `Restart=always` loop. Implemented internal auto-reconnecting stream loop with backoff, made live frame parsing non-fatal (ignoring transient crossed quotes), and latched startup notifications to initial boot. Verified with 79 Rust workspace tests + 18 Python pytest tests passing. Pushed to `main` (`1ebf501`), ready to pull and compile on Proxmox LXC.
 
 ## Immediate Next Task
-1. Monitor live paper burn-in on Proxmox LXC (Week 1 of 8).
-2. Test interactive Telegram slash commands and custom keyboard buttons on mobile (`/status`, `/positions`, `/pnl`, `/orders`, `/help`).
+1. Run `git pull && cargo build --release --bin alpha-node && cp target/release/alpha-node /opt/alpha/bin/alpha-node && systemctl start alpha-node.service` inside Proxmox LXC (`192.168.1.230`).
+2. Confirm `alpha-node.service` runs 24/7 without Telegram startup alerts.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -69,8 +69,8 @@
 - [x] Implemented Sprint 5.4: FIFO `BarBuffer`, REST kline bootstrap (`bootstrap.rs`), live $H_1$ signal evaluator (`signal.rs`), fill recorder (`fill_recorder.rs`), and end-to-end paper order execution in `TradeEngine`.
 - [x] Implemented Sprint 5.5: Non-blocking asynchronous Telegram notifications (`telegram.rs`) for signals, fills, exits, circuit breakers, and startup; deep status CLI command (`status.rs` via `alpha-node status <config>`); extracted `signal_dispatch.rs`; 78 cargo tests + 18 pytest tests green.
 - [x] Implemented Sprint 5.6: Interactive Telegram Bot listener (`telegram_listener.rs`) with deleted obsolete commands/webhooks, native Alpha slash commands (`/status`, `/positions`, `/pnl`, `/orders`, `/flatten`, `/help`), persistent custom action keyboard, and full mobile node control; 79 cargo tests + 18 pytest tests green.
-- [x] Implemented Sprint 5.7: Resolved WebSocket kline interval clash causing 4h restart loop. Tagged `interval` on `LiveMarketEvent::Kline`, restricted stream URL to configured timeframe (`4h`), added non-fatal buffer error handling, committed to `main` (`72f7813`), and deployed to Proxmox LXC (`192.168.1.230`).
-
+- [x] Implemented Sprint 5.7: Resolved WebSocket kline interval clash causing 4h restart loop. Tagged `interval` on `LiveMarketEvent::Kline`, restricted stream URL to configured timeframe (`4h`), added non-fatal buffer error handling, committed to `main` (`72f7813`).
+- [x] Implemented Sprint 5.8: Added persistent auto-reconnecting WebSocket stream loop with backoff, non-fatal live frame parsing (skipping transient crossed quotes), and single-shot startup telemetry latch; committed to `main` (`1ebf501`). All 79 cargo workspace tests and 18 pytest tests green.
 
 ## Active Blockers / Decisions
 - None. Ready for container release build and live Telegram mobile interaction test.
