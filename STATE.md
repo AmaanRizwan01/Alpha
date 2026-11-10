@@ -1,15 +1,16 @@
 # Project State & Handoff
 
 ## Current Snapshot
-- **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox)
-- **Active Sprint:** Sprint 5.8 (WebSocket Reconnection Resilience & Zero-Spam Loop) Verified & Committed
+- **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox) - Day 3 of 56
+- **Active Sprint:** Sprint 5.8 Deployed & Multi-Strategy Architecture Planned
 - **Git Branch:** `main`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Resolved daemon restart and Telegram spam loops. Diagnosed root cause of periodic exits: unhandled WebSocket stream disconnects, Ping/Pong drops, and fatal `?` error propagation on live ticks caused `engine.run()` to exit, triggering systemd's `Restart=always` loop. Implemented internal auto-reconnecting stream loop with backoff, made live frame parsing non-fatal (ignoring transient crossed quotes), and latched startup notifications to initial boot. Verified with 79 Rust workspace tests + 18 Python pytest tests passing. Pushed to `main` (`1ebf501`), ready to pull and compile on Proxmox LXC.
+- **Status:** Sprint 5.8 release binary natively compiled and deployed to Proxmox LXC container 101 (`alpha-node.service` running steadily under PID 14836). Zero Telegram restart spam; silent internal WebSocket auto-reconnect active. Designed pluggable multi-strategy architecture blueprint (`pluggable_multi_strategy_plan.md`) to allow adding, backtesting, and running new strategies (e.g. Nasdaq/S&P mini adaptation) without modifying or risking H1. All 79 cargo workspace tests and 18 pytest tests green. Clean git tree.
 
 ## Immediate Next Task
-1. Run `git pull && cargo build --release --bin alpha-node && cp target/release/alpha-node /opt/alpha/bin/alpha-node && systemctl start alpha-node.service` inside Proxmox LXC (`192.168.1.230`).
-2. Confirm `alpha-node.service` runs 24/7 without Telegram startup alerts.
+1. Await user's finalized strategy rules (timeframe, direction, entry triggers, structural stop loss logic).
+2. Scaffold `strategies/` modular directory in `alpha-core`, moving H1 into `strategies/h1.rs` (untouched) and creating `strategies/h2_*.rs`.
+3. Expose to PyO3 for walk-forward backtesting and Stage B validation before live paper consideration.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -71,6 +72,8 @@
 - [x] Implemented Sprint 5.6: Interactive Telegram Bot listener (`telegram_listener.rs`) with deleted obsolete commands/webhooks, native Alpha slash commands (`/status`, `/positions`, `/pnl`, `/orders`, `/flatten`, `/help`), persistent custom action keyboard, and full mobile node control; 79 cargo tests + 18 pytest tests green.
 - [x] Implemented Sprint 5.7: Resolved WebSocket kline interval clash causing 4h restart loop. Tagged `interval` on `LiveMarketEvent::Kline`, restricted stream URL to configured timeframe (`4h`), added non-fatal buffer error handling, committed to `main` (`72f7813`).
 - [x] Implemented Sprint 5.8: Added persistent auto-reconnecting WebSocket stream loop with backoff, non-fatal live frame parsing (skipping transient crossed quotes), and single-shot startup telemetry latch; committed to `main` (`1ebf501`). All 79 cargo workspace tests and 18 pytest tests green.
+- [x] Deployed Sprint 5.8 to Proxmox LXC 101: Native release compilation succeeded in 13.9s, replaced `/opt/alpha/bin/alpha-node`, verified `alpha-node.service` running 24/7 with zero Telegram restart spam.
+- [x] Designed Pluggable Multi-Strategy Architecture blueprint in `pluggable_multi_strategy_plan.md` for independent, risk-isolated strategy modules (preserving H1).
 
 ## Active Blockers / Decisions
 - None. Ready for container release build and live Telegram mobile interaction test.
