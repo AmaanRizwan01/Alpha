@@ -10,6 +10,7 @@ pub enum LiveMarketEvent {
     Trade(MarketTrade),
     Kline {
         symbol: String,
+        interval: String,
         bar: Bar,
         is_closed: bool,
     },
@@ -43,6 +44,7 @@ pub fn parse_ws_frame(text: &str, now_ms: i64) -> Result<Option<LiveMarketEvent>
         BinanceWsMessage::Trade(t) => LiveMarketEvent::Trade(t.to_market_trade()?),
         BinanceWsMessage::Kline(k) => LiveMarketEvent::Kline {
             symbol: k.symbol.clone(),
+            interval: k.kline.interval.clone(),
             bar: k.to_bar()?,
             is_closed: k.is_closed(),
         },
@@ -106,11 +108,13 @@ mod tests {
         assert!(matches!(event, Some(LiveMarketEvent::Kline { .. })));
         if let Some(LiveMarketEvent::Kline {
             symbol,
+            interval,
             bar,
             is_closed,
         }) = event
         {
             assert_eq!(symbol, "BTCUSDT");
+            assert_eq!(interval, "1h");
             assert!(is_closed);
             assert_eq!(bar.close, dec!(65000.0));
         }

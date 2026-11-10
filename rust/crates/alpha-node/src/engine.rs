@@ -97,10 +97,11 @@ impl TradeEngine {
             LiveMarketEvent::Trade(trade) => self.on_trade(&trade, now_ms),
             LiveMarketEvent::Kline {
                 symbol,
+                interval,
                 bar,
                 is_closed,
             } => {
-                if is_closed {
+                if is_closed && interval == self.config.universe.timeframe {
                     self.on_bar_closed(&symbol, bar, now_ms)?;
                 }
                 Ok(())
@@ -116,7 +117,13 @@ impl TradeEngine {
     }
 
     fn on_bar_closed(&mut self, symbol: &str, bar: Bar, now_ms: i64) -> Result<(), NodeError> {
-        let atr = self.update_buffer_and_calc_atr(symbol, bar.clone())?;
+        let atr = match self.update_buffer_and_calc_atr(symbol, bar.clone()) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("[engine] skipping bar for {}: {}", symbol, e);
+                return Ok(());
+            }
+        };
         if let Some(fill) = self
             .simulator
             .process_bar(symbol, &bar, atr, &self.exit_config)?
@@ -150,7 +157,10 @@ impl TradeEngine {
             &mut self.bar_buffers,
         )
         .await;
-        let stream_url = build_stream_url(&self.config.universe.symbols, &["1h", "4h"]);
+        let stream_url = build_stream_url(
+            &self.config.universe.symbols,
+            &[&self.config.universe.timeframe],
+        );
         println!("[ws] Connecting to Binance stream: {}", stream_url);
         let mut ws = connect_binance_stream(&stream_url).await?;
         println!("[ws] Connected. Live market feed active.");

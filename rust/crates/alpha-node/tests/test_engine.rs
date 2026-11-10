@@ -150,6 +150,7 @@ deadman_timeout_secs = 60
             .handle_market_event(
                 LiveMarketEvent::Kline {
                     symbol: "BTCUSDT".to_string(),
+                    interval: "1h".to_string(),
                     bar,
                     is_closed: true,
                 },
@@ -181,6 +182,7 @@ deadman_timeout_secs = 60
         .handle_market_event(
             LiveMarketEvent::Kline {
                 symbol: "BTCUSDT".to_string(),
+                interval: "1h".to_string(),
                 bar: breakout_bar,
                 is_closed: true,
             },

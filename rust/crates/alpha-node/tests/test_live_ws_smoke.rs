@@ -49,12 +49,13 @@ async fn test_live_binance_stream_connectivity() {
                         }
                         LiveMarketEvent::Kline {
                             symbol,
+                            interval,
                             bar,
                             is_closed,
                         } => {
                             println!(
-                                "[live-tick] Kline {} close={} is_closed={}",
-                                symbol, bar.close, is_closed
+                                "[live-tick] Kline {} {} close={} is_closed={}",
+                                symbol, interval, bar.close, is_closed
                             );
                         }
                     }
