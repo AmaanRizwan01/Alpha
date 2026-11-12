@@ -80,7 +80,11 @@ fn test_status_display_and_recent_orders() {
     let res = display_status(test_db);
     assert!(res.is_ok());
 
+    drop(db);
     let _ = fs::remove_file(test_db);
+    let _ = fs::remove_file(format!("{}-wal", test_db));
+    let _ = fs::remove_file(format!("{}-shm", test_db));
+    let _ = fs::remove_dir("data");
 }
 
 #[test]
@@ -129,5 +133,9 @@ fn test_telegram_listener_commands_and_buttons() {
     let (is_halted, _) = db.get_halt_state().unwrap();
     assert!(is_halted);
 
+    drop(db);
     let _ = fs::remove_file(test_db);
+    let _ = fs::remove_file(format!("{}-wal", test_db));
+    let _ = fs::remove_file(format!("{}-shm", test_db));
+    let _ = fs::remove_dir("data");
 }

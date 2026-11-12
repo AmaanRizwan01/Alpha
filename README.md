@@ -196,13 +196,15 @@ $$\text{DSR}\left(\widehat{\text{SR}}\right) > 0.95$$
 
 ---
 
-## 7. System Architecture
+## 7. System Architecture & Repository Layout
 
 Alpha is built with a dual-language architecture separating pure compute from high-level research:
 
 - **`alpha-core` (Rust):** Pure, zero-IO Rust library compiling feature calculations, sizing mathematics, and exit state machines under `#![forbid(unsafe_code)]`.
 - **`alpha-py` (PyO3):** Native C-FFI extension exposing compiled Rust functions directly to Python research pipelines, ensuring zero discrepancy between backtest and production execution.
 - **`alpha-node` (Rust / Tokio):** Asynchronous live execution daemon managing WebSocket feeds, REST order routers, and SQLite Write-Ahead Logging (WAL) state recovery.
+- **`python/research/` (Quantitative Research Laboratory):** Modular research suite hosting plug-and-play strategy algorithms (`strategies/`), Binance Vision data ingestion, purged walk-forward simulators, and statistical kill-gate audits.
+- **`docs/backtests/`:** Empirical backtest reports, loss analyses, and multi-year trade logs across active strategies and killed candidates.
 
 ---
 

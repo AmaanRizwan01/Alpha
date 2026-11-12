@@ -86,7 +86,11 @@ fn test_trade_engine_lifecycle_and_db_persistence() {
     assert!(pos_after.is_none());
 
     // Clean up
+    drop(engine);
     let _ = fs::remove_file("data/test_engine.db");
+    let _ = fs::remove_file("data/test_engine.db-wal");
+    let _ = fs::remove_file("data/test_engine.db-shm");
+    let _ = fs::remove_dir("data");
 }
 
 #[test]
@@ -222,5 +226,9 @@ deadman_timeout_secs = 60
     assert_eq!(db_pos.unwrap().entry_price, dec!(61400.0));
 
     // Clean up
+    drop(engine);
     let _ = fs::remove_file("data/test_signal_engine.db");
+    let _ = fs::remove_file("data/test_signal_engine.db-wal");
+    let _ = fs::remove_file("data/test_signal_engine.db-shm");
+    let _ = fs::remove_dir("data");
 }
