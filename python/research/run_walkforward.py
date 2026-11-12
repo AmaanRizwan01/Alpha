@@ -6,6 +6,11 @@ Simulates H1 breakouts across BTC/ETH (1h & 4h) with E0..E2 exit ablations.
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+import sys
+
+# Ensure repository root is in sys.path for direct script invocation
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import polars as pl
 import alpha_py
 
