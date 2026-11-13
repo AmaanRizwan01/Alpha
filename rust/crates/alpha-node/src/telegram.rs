@@ -84,8 +84,7 @@ impl TelegramNotifier {
                     "reply_markup": {
                         "keyboard": [
                             [{"text": "📊 Status"}, {"text": "📈 Positions"}],
-                            [{"text": "💰 PnL"}, {"text": "📋 Orders"}],
-                            [{"text": "🚨 Flatten"}, {"text": "ℹ️ Help"}]
+                            [{"text": "💰 PnL"}, {"text": "🚨 Flatten"}]
                         ],
                         "resize_keyboard": true,
                         "is_persistent": true

@@ -1,8 +1,17 @@
 use crate::error::NodeError;
 use rust_decimal::Decimal;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct SubAccountConfig {
+    pub strategy: String,
+    pub allocation_pct: Decimal,
+    pub symbols: Vec<String>,
+    pub timeframe: String,
+}
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct SystemConfig {
@@ -49,6 +58,8 @@ pub struct AppConfig {
     pub risk: RiskConfig,
     pub execution: ExecutionConfig,
     pub monitoring: MonitoringConfig,
+    #[serde(default)]
+    pub sub_accounts: HashMap<String, SubAccountConfig>,
 }
 
 impl AppConfig {

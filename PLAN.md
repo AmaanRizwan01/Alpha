@@ -245,6 +245,59 @@ project-alpha-v3/
    * **Commission Check:** Query `GET /api/v3/account/commission?symbol=BTCFDUSD` (and `BTCUSDC`, `BTCUSDT`, `ETHUSDT`) to get exact `standardCommission.maker` and `taker` rates.
    * **Atomic Entry + Stop (`OTOCO`):** Submit entries via `POST /api/v3/orderList/otoco` with `workingType=LIMIT_MAKER` (or `LIMIT`) and `pendingBelowType=STOP_LOSS_LIMIT` so the protective stop is atomically bound to the entry on Binance's matching engine.
 
+### 5.1 OKX Multi-Sub-Account Production Architecture & API Key Management
+
+To guarantee strict risk isolation across strategies—preventing margin cross-contamination, conflicting position directions, and order sequence clashes—Project Alpha structures production execution across **three isolated OKX sub-accounts**:
+
+| Sub-Account Name | Strategy ID | Instrument Universe | Timeframe | Execution Model & Venue |
+|---|---|---|---|---|
+| **`alphabreakout`** | `VOLATILITY_BREAKOUT` | Spot `BTC/USDT`, `ETH/USDT` | 4h bars | Post-Only Limit Maker + `attachAlgoOrds` atomic stops |
+| **`alphacarry`** | `FUNDING_CARRY` | Spot + Perp (`BTC-USDT-SWAP`, `ETH-USDT-SWAP`) | 8h funding cycles | Delta-Neutral Basis Arbitrage + Fee-Hurdle Lock + ADL Watchdog |
+| **`alphamacro`** | `MACRO_TREND` | Tokenized Macro (`XSPY-USDT`, `XQQQ-USDT`, `PAXG-USDT`, `BTC-USDT`) | 1D bars | Real-Yield Momentum + ATR Chandelier Trailing Stop |
+
+#### The OKX $100 Minimum Balance Rule for Trade API Keys
+* **Platform Security Enforcement:** OKX strictly requires a sub-account to maintain a **balance of $\ge \$100$** before granting API trading permissions (`Trade`).
+* When sub-accounts are first created with $\$0$ balance, the API Key creation interface will grey out or reject the "Trade" permission checkbox.
+* Therefore, API key generation and live key swapping must strictly follow the operational runbook below.
+
+#### Step-by-Step Deposit & API Key Swap Procedure (Operational Runbook)
+
+1. **Step 1: Deposit / Transfer Capital to Sub-Accounts:**
+   - In OKX Dashboard -> navigate to `Assets` -> `Sub-Account Transfer`.
+   - Transfer $\ge \$100$ (or target initial capital) from the Main Account (Funding or Unified Trading balance) into each of the 3 sub-accounts:
+     - Transfer $\$100+$ to `alphabreakout`
+     - Transfer $\$100+$ to `alphacarry`
+     - Transfer $\$100+$ to `alphamacro`
+2. **Step 2: Generate Dedicated Sub-Account API Credentials:**
+   - Log into or switch account context to `alphabreakout` (or use OKX Sub-Account Management API generator).
+   - Navigate to `User Profile` -> `API Keys` -> `Create V5 API Key`.
+   - Set **Permissions:** Check `Read` and `Trade`. **Strictly leave `Withdraw` UNCHECKED.**
+   - Set **Passphrase:** Enter a dedicated strong passphrase for the sub-account.
+   - Set **IP Allowlist:** Bind the key to the Proxmox VE Debian 12 LXC static IP / outbound gateway (e.g., `192.168.1.230` or your home router's static public IP).
+   - Securely record `API Key`, `Secret Key`, and `Passphrase`.
+   - Repeat for `alphacarry` and `alphamacro`.
+3. **Step 3: Update Environment Files on Workstation and Proxmox:**
+   - Update `.env` locally and `/opt/alpha/.env` on the Proxmox LXC node (`chmod 600 /opt/alpha/.env`):
+     ```bash
+     # Sub-Account 1: Breakout
+     OKX_API_KEY_BREAKOUT="<alphabreakout_api_key>"
+     OKX_API_SECRET_BREAKOUT="<alphabreakout_secret_key>"
+     OKX_PASSPHRASE_BREAKOUT="<alphabreakout_passphrase>"
+
+     # Sub-Account 2: Funding Carry
+     OKX_API_KEY_CARRY="<alphacarry_api_key>"
+     OKX_API_SECRET_CARRY="<alphacarry_secret_key>"
+     OKX_PASSPHRASE_CARRY="<alphacarry_passphrase>"
+
+     # Sub-Account 3: Macro Trend
+     OKX_API_KEY_MACRO="<alphamacro_api_key>"
+     OKX_API_SECRET_MACRO="<alphamacro_secret_key>"
+     OKX_PASSPHRASE_MACRO="<alphamacro_passphrase>"
+     ```
+4. **Step 4: Pre-Flight Verification & Live Cutover:**
+   - Run `alpha-node status /opt/alpha/configs/paper.toml` to verify database connectivity, sub-account balance synchronization, and zero circuit-breaker halts.
+   - When transitioning from Phase 5 (Paper Burn-In) to Phase 6 (Micro-Live Incubation), set `allow_live_orders = true` in `configs/live_100.toml`, verify systemd service unit points to the live config, and reload `systemctl daemon-reload && systemctl restart alpha-node.service`.
+
 ---
 
 # 6. The 6-Month Incubation & Scale-Up Roadmap ($\text{USD } 100 \rightarrow \text{USD } 5{,}000\text{--}10{,}000$)

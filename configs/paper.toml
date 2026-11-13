@@ -29,3 +29,22 @@ slippage_allowance_bps = 3.0     # max tolerance against top of book
 heartbeat_interval_secs = 60     # external Healthchecks.io ping cadence
 deadman_interval_secs = 20       # exchange cancel-all-after refresh cadence
 deadman_timeout_secs = 60        # exchange cancel-all-after expiry guard
+
+# Sub-Account Multi-Strategy Simulation (Isolated OKX Sub-Accounts)
+[sub_accounts.alphabreakout]
+strategy = "VOLATILITY_BREAKOUT"
+allocation_pct = 0.3333
+symbols = ["BTCUSDT", "ETHUSDT"]
+timeframe = "4h"
+
+[sub_accounts.alphacarry]
+strategy = "FUNDING_CARRY"
+allocation_pct = 0.3333
+symbols = ["BTCUSDT", "ETHUSDT"]
+timeframe = "8h"
+
+[sub_accounts.alphamacro]
+strategy = "MACRO_TREND"
+allocation_pct = 0.3334
+symbols = ["XSPY-USDT", "XQQQ-USDT", "PAXG-USDT", "BTC-USDT"]
+timeframe = "1d"

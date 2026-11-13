@@ -22,6 +22,7 @@ pub mod signal;
 pub mod signal_dispatch;
 pub mod simulator;
 pub mod status;
+pub mod sub_account;
 pub mod telegram;
 pub mod telegram_listener;
 pub mod ws;

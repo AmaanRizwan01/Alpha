@@ -2,15 +2,15 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox) - Day 3 of 56
-- **Active Sprint:** Sprint 5.9 Rust FUNDING_CARRY Port & Proxmox Readiness (Branch: `feat/p5-s5.9-funding-carry-rust`)
-- **Git Branch:** `feat/p5-s5.9-funding-carry-rust`
+- **Active Sprint:** Sprint 5.10 OKX Sub-Accounts Isolation, Unified TradingView & Sleek Telegram UI (Branch: `feat/p5-s5.10-subaccounts-sim-tv-tg`)
+- **Git Branch:** `feat/p5-s5.10-subaccounts-sim-tv-tg`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sim.rs`, `carry_sizing.rs`), exposed via `alpha-py` (`carry.rs`), added `alpha-venues` Binance Futures models (`fapi.rs`), implemented live carry evaluation (`carry_signal.rs`) with predictive pre-exit and basis guard, and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with emergency market close order builder and Drill 6 in `alpha-node`. Resolved delta-neutral coin matching across basis, eliminated unchecked slice indexing and division by zero risks, enforced strict 250-line file limits, and added multi-symbol premium index parsing. Live Proxmox LXC 101 Phase 5 paper burn-in (Day 3 of 56) undisturbed. All 91 cargo workspace tests and 43 pytest tests green.
+- **Status:** Implemented multi-sub-account simulation in `alpha-node` with strict SQLite state isolation (`sub_accounts`, `sub_account_positions`, `sub_account_orders`), independent equity tracking, drawdown calculation, and circuit breaker tripping for `alphabreakout`, `alphacarry`, and `alphamacro`. Documented OKX sub-account creation and $100 deposit requirement in `PLAN.md` Section 5.1 and `.env.example`. Simplified Telegram bot to a clean 2x2 keyboard grid with full sub-account telemetry across `/status`, `/positions`, and `/pnl`. Created unified Pine Script v5 indicator/strategy in `tradingview/alpha_portfolio.pine` with runtime mode switcher and documentation in `docs/TRADINGVIEW.md`. All files strictly obey $\le 250$ lines and `#![forbid(unsafe_code)]`. All 95 cargo workspace tests and 43 pytest tests green.
 
 ## Immediate Next Task
-1. Monitor live Phase 5 paper burn-in telemetry on Proxmox LXC 101 (Day 3 -> Day 4 of 56).
-2. Verify Telegram bot interaction (`/status`, `/positions`, `/pnl`) on mobile.
-3. Check WAL SQLite persistence and trailing ratchet across 4h bar boundaries.
+1. Deploy `alpha-node` release build with sub-account simulation to Proxmox LXC 101 node (`192.168.1.230`).
+2. Verify live node telemetry via Telegram bot (`/status`, `/positions`, `/pnl`) on mobile.
+3. Monitor paper burn-in continuity across 4h bar boundaries.
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -80,6 +80,7 @@
 - [x] Cleaned codebase and restructured documentation hierarchy: decommissioned legacy `brainstorming/` directory (deleted obsolete v1-v4 plan drafts, relocated canonical multi-strategy specification to `docs/STRATEGY.md`), reorganized uppercase `BACKTEST/` into clean `docs/backtests/`, resolved `python/research/run_walkforward.py` standalone module import pathing, purged transient SQLite test databases and stale pycache artifacts. Verified 100% test suite pass across Rust (76 cargo tests) and Python (38 pytest tests).
 - [x] Audited codebase architecture & research laboratory: established canonical Quantitative Research Laboratory specification in [`python/research/README.md`](file:///c:/Coding/alpha/python/research/README.md), resolved Windows SQLite file handle locking in `alpha-node` test suites (`test_engine.rs`, `test_telemetry.rs`) ensuring zero persistent test artifact leakage, updated root `README.md` repository layout, and verified full suite health across Windows workstation and Proxmox LXC 101 node.
 - [x] Implemented Sprint 5.9: Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sim.rs`, `carry_sizing.rs`) with Fee-Hurdle Lock, Funding Inversion Stop, and delta-neutral scale-invariant sizing; exposed via PyO3 in `alpha-py` (`carry.rs`); implemented Binance Futures models and parsers in `alpha-venues` (`fapi.rs`); implemented live carry evaluation (`carry_signal.rs`) with Predictive Funding Pre-Exit and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with Drill 6 in `alpha-node`. All 91 cargo workspace tests and 43 pytest tests green.
+- [x] Implemented Sprint 5.10: Added OKX sub-account setup runbook and $100 balance requirement in `PLAN.md` Section 5.1; built multi-sub-account simulation in `alpha-node` with isolated SQLite state (`sub_accounts`, `sub_account_positions`, `sub_account_orders`), independent equity tracking, drawdown calculation, and circuit breakers for `alphabreakout`, `alphacarry`, and `alphamacro`; simplified Telegram custom keyboard to sleek 2x2 grid (`📊 Status`, `📈 Positions`, `💰 PnL`, `🚨 Flatten`) with sub-account breakdown; authored unified Pine Script v5 script in `tradingview/alpha_portfolio.pine` and documentation in `docs/TRADINGVIEW.md`; enforced $\le 250$ line limits across all files. All 95 cargo workspace tests and 43 pytest tests green.
 
 ## Active Blockers / Decisions
-- None. Branch `feat/p5-s5.9-funding-carry-rust` verified and ready for review/merge.
+- None. Branch `feat/p5-s5.10-subaccounts-sim-tv-tg` verified and ready for deployment to Proxmox LXC 101.
