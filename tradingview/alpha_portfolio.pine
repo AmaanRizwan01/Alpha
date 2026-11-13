@@ -155,10 +155,20 @@ if barstate.islast
     table.cell(hud, 1, 4, reg_pass ? "BULLISH (PASS)" : "BEARISH (ABSTAIN)", bgcolor=color.new(color.black, 50), text_color=reg_pass ? color.green : color.red)
 
 // =============================================================================
-// UNIFIED ALERT CONDITIONS (One-Click Webhooks for OKX Sub-Accounts)
+// UNIFIED ALERT CONDITIONS & DYNAMIC WEBHOOKS (OKX Sub-Accounts)
 // =============================================================================
+// Dynamic Alert Calls (usable with TradingView "Any alert() function call")
+sub_acc_name = is_bo ? "alphabreakout" : (is_carry ? "alphacarry" : "alphamacro")
+
+if active_buy
+    alert('{"sub_account": "' + sub_acc_name + '", "strategy": "' + strategy_mode + '", "action": "BUY", "ticker": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + '}', alert.freq_once_per_bar_close)
+
+if active_exit
+    alert('{"sub_account": "' + sub_acc_name + '", "strategy": "' + strategy_mode + '", "action": "CLOSE", "ticker": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + '}', alert.freq_once_per_bar_close)
+
+// Static Alert Conditions (compatible with standard alertcondition dialog)
 alertcondition(active_buy, title="Alpha Long Entry Alert", 
-     message='{"sub_account": "{{strategy_mode}}", "action": "BUY", "ticker": "{{ticker}}", "price": {{close}}}')
+     message='{"action": "BUY", "ticker": "{{ticker}}", "price": {{close}}}')
 
 alertcondition(active_exit, title="Alpha Stop/Exit Alert", 
-     message='{"sub_account": "{{strategy_mode}}", "action": "CLOSE", "ticker": "{{ticker}}", "price": {{close}}}')
+     message='{"action": "CLOSE", "ticker": "{{ticker}}", "price": {{close}}}')

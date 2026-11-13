@@ -34,20 +34,31 @@ In the indicator settings gear icon:
 
 ---
 
-## 3. Webhook Alert Format
+## 3. Webhook Alert Configuration
 
-The script includes unified alert conditions:
-- **Alpha Long Entry Alert**: Triggers when all 3 gates pass and breakout occurs.
-- **Alpha Stop/Exit Alert**: Triggers when the ATR trailing stop or inversion stop is touched.
+The script provides two ways to configure TradingView alerts:
 
-### Sample Alert JSON Payload:
+### Option A: Dynamic `alert()` Webhook (Recommended)
+When creating an alert in TradingView:
+1. Select **Condition**: `Project Alpha — Multi-Strategy Portfolio Engine`.
+2. Select: **Any alert() function call**.
+3. Set **Frequency**: `Once Per Bar Close`.
+4. Enter your webhook URL (e.g. `https://your-node-ip/webhook` or TradingView alert bridge).
+5. Leave the alert message field as default—the script automatically formats and injects the dynamic JSON payload:
+
 ```json
 {
   "sub_account": "alphabreakout",
   "strategy": "VOLATILITY_BREAKOUT",
   "action": "BUY",
-  "ticker": "{{ticker}}",
-  "price": {{close}}
+  "ticker": "BTCUSDT",
+  "price": 84520.50
 }
 ```
-This payload directly references the target OKX sub-account for isolated order execution.
+
+### Option B: Named `alertcondition()` Triggers
+Alternatively, create individual alerts targeting specific conditions:
+- **Alpha Long Entry Alert**: Triggers when breakout occurs with all anti-chop gates passing.
+- **Alpha Stop/Exit Alert**: Triggers when trailing stop or inversion threshold is hit.
+Default message template uses standard TradingView placeholders:
+`{"action": "BUY", "ticker": "{{ticker}}", "price": {{close}}}`.

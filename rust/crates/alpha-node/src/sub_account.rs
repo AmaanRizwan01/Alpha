@@ -197,6 +197,18 @@ pub fn insert_sub_account_order(
     Ok(())
 }
 
+pub fn update_sub_account_order_status(
+    conn: &Connection,
+    client_order_id: &str,
+    status: &str,
+    now: i64,
+) -> Result<(), NodeError> {
+    let sql =
+        "UPDATE sub_account_orders SET status = ?1, updated_at_ms = ?2 WHERE client_order_id = ?3";
+    conn.execute(sql, params![status, now, client_order_id])?;
+    Ok(())
+}
+
 fn map_order(r: &Row<'_>) -> rusqlite::Result<OrderRow> {
     Ok(OrderRow {
         client_order_id: r.get(0)?,

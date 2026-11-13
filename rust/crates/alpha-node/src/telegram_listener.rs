@@ -1,6 +1,7 @@
 use crate::db::DbManager;
 use crate::status::fetch_recent_orders;
 use reqwest::Client;
+use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -14,15 +15,20 @@ pub struct ListenerConfig {
     pub authorized_chat_id: String,
 }
 
+fn get_eq_stats(db: &DbManager) -> (Decimal, Decimal, Decimal, Decimal) {
+    let (hwm, eq, dd) = db
+        .get_equity_hwm()
+        .unwrap_or((dec!(100), dec!(100), dec!(0)));
+    (hwm, eq, dd, (dec!(6.0) - dd).max(dec!(0)))
+}
+
 fn handle_status(db_path: &str, mode: &str, symbols: &[String]) -> String {
     let db = match DbManager::open(db_path) {
         Ok(d) => d,
         Err(e) => return format!("⚠️ Error opening database: {e}"),
     };
     let (is_halted, halt_reason) = db.get_halt_state().unwrap_or((false, None));
-    let (hwm, eq, dd_pct) = db
-        .get_equity_hwm()
-        .unwrap_or((dec!(100), dec!(100), dec!(0)));
+    let (hwm, eq, dd_pct, headroom) = get_eq_stats(&db);
     let state_str = if is_halted {
         format!(
             "🛑 HALTED ({})",
@@ -31,16 +37,11 @@ fn handle_status(db_path: &str, mode: &str, symbols: &[String]) -> String {
     } else {
         "🟢 RUNNING / HEALTHY".to_string()
     };
-    let headroom = (dec!(6.0) - dd_pct).max(dec!(0));
     let mut out = format!(
         "<b>📊 Project Alpha Node Status</b>\n\n\
-         <b>State:</b> {state_str}\n\
-         <b>Mode:</b> {mode}\n\
-         <b>Symbols:</b> {}\n\
-         <b>Current Equity:</b> ${eq}\n\
-         <b>High-Water Mark:</b> ${hwm}\n\
-         <b>Current Drawdown:</b> {dd_pct}% (Max: 6.0%)\n\
-         <b>Drawdown Headroom:</b> {headroom}%\n",
+         <b>State:</b> {state_str}\n<b>Mode:</b> {mode}\n<b>Symbols:</b> {}\n\
+         <b>Current Equity:</b> ${eq}\n<b>High-Water Mark:</b> ${hwm}\n\
+         <b>Current Drawdown:</b> {dd_pct}% (Max: 6.0%)\n<b>Drawdown Headroom:</b> {headroom}%\n",
         symbols.join(", ")
     );
     if let Ok(subs) = crate::sub_account::list_sub_accounts(db.conn()) {
@@ -48,8 +49,9 @@ fn handle_status(db_path: &str, mode: &str, symbols: &[String]) -> String {
             out.push_str("\n<b>Sub-Accounts (OKX):</b>\n");
             for s in subs {
                 let st = if s.is_halted { "🛑" } else { "🟢" };
+                let h_tag = if s.is_halted { " - HALTED" } else { "" };
                 out.push_str(&format!(
-                    "• {st} <b>{}</b>: ${} (DD: {}%)\n",
+                    "• {st} <b>{}</b>: ${} (DD: {}%{h_tag})\n",
                     s.name, s.current_equity, s.max_drawdown_pct
                 ));
             }
@@ -94,17 +96,9 @@ fn handle_pnl(db_path: &str) -> String {
         Ok(d) => d,
         Err(e) => return format!("⚠️ Error opening database: {e}"),
     };
-    let (hwm, eq, dd_pct) = db
-        .get_equity_hwm()
-        .unwrap_or((dec!(100), dec!(100), dec!(0)));
-    let headroom = (dec!(6.0) - dd_pct).max(dec!(0));
+    let (hwm, eq, dd, hr) = get_eq_stats(&db);
     let mut out = format!(
-        "<b>💰 PnL & Balance Overview</b>\n\n\
-         <b>Total Equity:</b> ${eq}\n\
-         <b>Equity HWM:</b> ${hwm}\n\
-         <b>Max Drawdown:</b> {dd_pct}%\n\
-         <b>Circuit Breaker Limit:</b> 6.0%\n\
-         <b>Drawdown Headroom:</b> {headroom}%\n"
+        "<b>💰 PnL & Balance Overview</b>\n\n<b>Total Equity:</b> ${eq}\n<b>HWM:</b> ${hwm}\n<b>Max DD:</b> {dd}%\n<b>Headroom:</b> {hr}%\n"
     );
     if let Ok(subs) = crate::sub_account::list_sub_accounts(db.conn()) {
         if !subs.is_empty() {
@@ -149,26 +143,35 @@ fn handle_flatten(db_path: &str) -> String {
         .unwrap_or_default()
         .as_millis();
     let now_ms = i64::try_from(now).unwrap_or(0);
+    for sub in &["alphabreakout", "alphacarry", "alphamacro"] {
+        let _ = crate::sub_account::set_sub_account_halt(
+            db.conn(),
+            sub,
+            true,
+            Some("operator telegram flatten"),
+            now_ms,
+        );
+    }
     match db.set_halt_state(true, Some("operator telegram flatten"), now_ms) {
-        Ok(_) => "🚨 <b>FLATTEN ENGAGED</b>\n\nTrading engine halted via Telegram.\nNo new orders will be submitted.".to_string(),
+        Ok(_) => {
+            "🚨 <b>FLATTEN ENGAGED</b>\n\nEngine & sub-accounts halted via Telegram.".to_string()
+        }
         Err(e) => format!("⚠️ Failed to engage halt: {e}"),
     }
 }
 
 fn handle_help() -> String {
-    "🤖 <b>Project Alpha Telegram Controls</b>\n\n\
-     • <b>📊 Status</b> (/status) - Overall node & sub-accounts\n\
-     • <b>📈 Positions</b> (/positions) - Open positions & stops\n\
-     • <b>💰 PnL</b> (/pnl) - Equity, HWM & drawdown\n\
-     • <b>🚨 Flatten</b> (/flatten) - Emergency halt kill switch\n\
-     • <b>/orders</b> - Recent order executions\n\
-     • <b>/help</b> - Show this guide\n\n\
-     <i>Tap any button below for instant action.</i>"
+    "🤖 <b>Alpha Telegram Controls</b>\n\n\
+     • <b>📊 Status</b> | <b>📈 Positions</b>\n\
+     • <b>💰 PnL</b> | <b>🚨 Flatten</b>\n\
+     • <b>/orders</b> | <b>/help</b>"
         .to_string()
 }
 
 pub fn dispatch_command(text: &str, db_path: &str, mode: &str, symbols: &[String]) -> String {
-    match text.trim().to_lowercase().as_str() {
+    let clean = text.trim().to_lowercase();
+    let cmd = clean.split('@').next().unwrap_or("").trim();
+    match cmd {
         "/status" | "📊 status" | "status" => handle_status(db_path, mode, symbols),
         "/positions" | "📈 positions" | "positions" => handle_positions(db_path),
         "/pnl" | "💰 pnl" | "pnl" => handle_pnl(db_path),
@@ -197,18 +200,11 @@ async fn handle_single_update(client: &Client, cfg: &ListenerConfig, upd: &Value
     };
     let reply = dispatch_command(text, &cfg.db_path, &cfg.mode, &cfg.symbols);
     let send_url = format!("https://api.telegram.org/bot{}/sendMessage", cfg.token);
-    let payload = json!({
-        "chat_id": cfg.authorized_chat_id,
-        "text": reply,
-        "parse_mode": "HTML",
-        "reply_markup": {
-            "keyboard": [
-                [{"text": "📊 Status"}, {"text": "📈 Positions"}],
-                [{"text": "💰 PnL"}, {"text": "🚨 Flatten"}]
-            ],
-            "resize_keyboard": true, "is_persistent": true
-        }
+    let kb = json!({
+        "keyboard": [[{"text": "📊 Status"}, {"text": "📈 Positions"}], [{"text": "💰 PnL"}, {"text": "🚨 Flatten"}]],
+        "resize_keyboard": true, "is_persistent": true
     });
+    let payload = json!({"chat_id": cfg.authorized_chat_id, "text": reply, "parse_mode": "HTML", "reply_markup": kb});
     let _ = client.post(&send_url).json(&payload).send().await;
 }
 

@@ -125,6 +125,20 @@ fn print_positions_and_orders(db: &DbManager, db_path: &str) -> Result<(), NodeE
             );
         }
     }
+    if let Ok(subs) = crate::sub_account::get_all_sub_account_positions(db.conn()) {
+        for (sub, pos) in subs {
+            any_pos = true;
+            println!(
+                "  [{sub}] [{}] qty={} entry=${} stop=${} (held {} bars, be={})",
+                pos.symbol,
+                pos.qty,
+                pos.entry_price,
+                pos.current_stop_price,
+                pos.bars_held,
+                pos.breakeven_active
+            );
+        }
+    }
     if !any_pos {
         println!("  [None - 100% flat in cash]");
     }

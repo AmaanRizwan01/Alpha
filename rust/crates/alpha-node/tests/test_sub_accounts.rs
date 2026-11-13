@@ -1,8 +1,9 @@
 use alpha_node::db::{DbManager, PositionRecord};
 use alpha_node::sub_account::{
-    delete_sub_account_position, get_all_sub_account_positions, get_portfolio_summary,
-    get_sub_account, get_sub_account_positions, insert_sub_account_order, list_sub_accounts,
-    update_sub_account_equity, upsert_sub_account_position,
+    delete_sub_account_position, fetch_sub_account_orders, get_all_sub_account_positions,
+    get_portfolio_summary, get_sub_account, get_sub_account_positions, insert_sub_account_order,
+    list_sub_accounts, update_sub_account_equity, update_sub_account_order_status,
+    upsert_sub_account_position,
 };
 use alpha_node::telegram_listener::dispatch_command;
 use alpha_types::{OrderIntent, OrderType, Side, Venue};
@@ -176,6 +177,69 @@ fn test_sub_account_orders_and_telegram_telemetry() {
     assert!(pnl_msg.contains("Sub-Account Balances:"));
     assert!(pnl_msg.contains("alphabreakout"));
     assert!(pnl_msg.contains("$100.0"));
+
+    // Verify @bot_name command routing
+    let status_bot = dispatch_command("/status@alpha_trading_bot", test_db, "paper", &symbols);
+    assert!(status_bot.contains("Sub-Accounts (OKX):"));
+
+    drop(db);
+    let _ = fs::remove_file(test_db);
+    let _ = fs::remove_file(format!("{test_db}-wal"));
+    let _ = fs::remove_file(format!("{test_db}-shm"));
+}
+
+#[test]
+fn test_sub_account_order_status_update_and_flatten_all_subs() {
+    let _ = fs::create_dir_all("data");
+    let test_db = "data/test_sub_accounts_flatten.db";
+    let _ = fs::remove_file(test_db);
+
+    let db = DbManager::open(test_db).unwrap();
+    let now_ms = 1_700_000_000_000;
+
+    let intent = OrderIntent::new(
+        Venue::Okx,
+        "BTCUSDT",
+        Side::Buy,
+        OrderType::LimitMaker,
+        Some(dec!(84000.0)),
+        dec!(0.002),
+        Some(dec!(82000.0)),
+        None,
+        "sub-ord-pending-1",
+    )
+    .unwrap();
+    insert_sub_account_order(db.conn(), "alphabreakout", &intent, "WORKING", now_ms).unwrap();
+
+    let orders = fetch_sub_account_orders(db.conn(), "alphabreakout", 5).unwrap();
+    assert_eq!(orders.len(), 1);
+    assert_eq!(orders[0].status, "WORKING");
+
+    // Transition to FILLED
+    update_sub_account_order_status(db.conn(), "sub-ord-pending-1", "FILLED", now_ms + 1000)
+        .unwrap();
+    let orders_after = fetch_sub_account_orders(db.conn(), "alphabreakout", 5).unwrap();
+    assert_eq!(orders_after[0].status, "FILLED");
+
+    // Test operator flatten via telegram halts all sub-accounts
+    let symbols = vec!["BTCUSDT".to_string(), "ETHUSDT".to_string()];
+    let flatten_resp = dispatch_command("/flatten", test_db, "paper", &symbols);
+    assert!(flatten_resp.contains("FLATTEN ENGAGED"));
+
+    let subs = list_sub_accounts(db.conn()).unwrap();
+    for s in &subs {
+        assert!(
+            s.is_halted,
+            "Sub-account {} should be halted on flatten",
+            s.name
+        );
+        assert_eq!(s.halt_reason.as_deref(), Some("operator telegram flatten"));
+    }
+
+    let status_after = dispatch_command("/status", test_db, "paper", &symbols);
+    assert!(status_after.contains("HALTED"));
+    assert!(status_after.contains("alphabreakout"));
+    assert!(status_after.contains("HALTED"));
 
     drop(db);
     let _ = fs::remove_file(test_db);
