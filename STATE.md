@@ -2,15 +2,18 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox) - Day 3 of 56
-- **Active Sprint:** Sprint 5.10 OKX Sub-Accounts Isolation, Unified TradingView & Sleek Telegram UI (Branch: `feat/p5-s5.10-subaccounts-sim-tv-tg`)
-- **Git Branch:** `feat/p5-s5.10-subaccounts-sim-tv-tg`
+- **Active Sprint:** Sprint 5.10 — COMPLETE. Merged to `main`. Proxmox LXC 101 running latest release binary.
+- **Git Branch:** `main` (Sprint 5.10 merged from `feat/p5-s5.10-subaccounts-sim-tv-tg`, commit `883ca2f`)
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Implemented multi-sub-account simulation in `alpha-node` with strict SQLite state isolation (`sub_accounts`, `sub_account_positions`, `sub_account_orders`), independent equity tracking, drawdown calculation, and circuit breaker tripping for `alphabreakout`, `alphacarry`, and `alphamacro`. Documented OKX sub-account creation and $100 deposit requirement in `PLAN.md` Section 5.1 and `.env.example`. Simplified Telegram bot to a clean 2x2 keyboard grid with full sub-account telemetry across `/status`, `/positions`, and `/pnl`. Created unified Pine Script v5 indicator/strategy in `tradingview/alpha_portfolio.pine` with runtime mode switcher and documentation in `docs/TRADINGVIEW.md`. All files strictly obey $\le 250$ lines and `#![forbid(unsafe_code)]`. All 95 cargo workspace tests and 43 pytest tests green.
+- **Status:** Sprint 5.10 fully deployed end-to-end. Multi-sub-account simulation (`alphabreakout`, `alphacarry`, `alphamacro`) live on Proxmox with isolated SQLite state, independent drawdown tracking, and 6% circuit breakers. Telegram keyboard simplified to clean 2x2 grid. Unified TradingView Pine Script v5 published (`tradingview/alpha_portfolio.pine`). `.env` prepped: all 14 environment variables populated (sub-account slots temporarily use main OKX read-only key until $100 deposit + sub-account key generation; variable names are final — only the values need swapping at go-live). All 96 cargo workspace tests and 43 pytest tests green on both Windows and Proxmox Debian 12. Node `RUNNING / HEALTHY` verified via `alpha-node status`.
 
 ## Immediate Next Task
-1. Deploy `alpha-node` release build with sub-account simulation to Proxmox LXC 101 node (`192.168.1.230`).
-2. Verify live node telemetry via Telegram bot (`/status`, `/positions`, `/pnl`) on mobile.
-3. Monitor paper burn-in continuity across 4h bar boundaries.
+1. **Fund sub-accounts**: Deposit ≥ $100 each to `alphabreakout`, `alphacarry`, `alphamacro` via OKX → Assets → Sub-Account Transfer.
+2. **Generate trade API keys**: For each funded sub-account, create a V5 API key with `Read + Trade` (no Withdraw), bind to Proxmox static IP.
+3. **Swap keys in `.env`**: Replace the 3 `OKX_API_KEY_BREAKOUT/CARRY/MACRO` placeholder values with the real sub-account keys.
+4. **Sync to Proxmox**: `scp c:/Coding/alpha/.env root@192.168.1.230:/opt/alpha/.env`
+5. **Flip to live**: Change `allow_live_orders = true` in `configs/live_100.toml`, restart `alpha-node.service`.
+6. **Continue monitoring** paper burn-in until 4-week paper gate passes (see Phase 4 roadmap).
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
