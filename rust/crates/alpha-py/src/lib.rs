@@ -1,9 +1,14 @@
 #![allow(unsafe_op_in_unsafe_fn, clippy::useless_conversion)]
 
+pub mod carry;
 mod common;
 pub mod exits;
 pub mod strategy;
 
+use carry::{
+    calc_carry_apr, calc_carry_sizing, check_adl_desync_py, simulate_carry_arbitrage,
+    PyCarrySizing, PyCarryTrade,
+};
 use common::{dec_from_f64, f64_from_dec};
 use exits::{calc_initial_stop, simulate_trade_exit, PyExitResult};
 use strategy::{evaluate_h1, scan_h1_signals, PyH1Result};
@@ -208,6 +213,8 @@ fn alpha_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPositionSize>()?;
     m.add_class::<PyH1Result>()?;
     m.add_class::<PyExitResult>()?;
+    m.add_class::<PyCarryTrade>()?;
+    m.add_class::<PyCarrySizing>()?;
 
     m.add_function(wrap_pyfunction!(kaufman_er, m)?)?;
     m.add_function(wrap_pyfunction!(atr, m)?)?;
@@ -218,6 +225,10 @@ fn alpha_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(scan_h1_signals, m)?)?;
     m.add_function(wrap_pyfunction!(calc_initial_stop, m)?)?;
     m.add_function(wrap_pyfunction!(simulate_trade_exit, m)?)?;
+    m.add_function(wrap_pyfunction!(calc_carry_apr, m)?)?;
+    m.add_function(wrap_pyfunction!(simulate_carry_arbitrage, m)?)?;
+    m.add_function(wrap_pyfunction!(calc_carry_sizing, m)?)?;
+    m.add_function(wrap_pyfunction!(check_adl_desync_py, m)?)?;
 
     Ok(())
 }

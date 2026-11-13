@@ -90,6 +90,23 @@ fn print_metrics(snap: &TelemetrySnapshot) {
     println!("------------------------------------------------------------");
 }
 
+fn print_sub_accounts(db: &DbManager) -> Result<(), NodeError> {
+    if let Ok(subs) = crate::sub_account::list_sub_accounts(db.conn()) {
+        if !subs.is_empty() {
+            println!("Sub-Accounts (OKX Isolation):");
+            for s in subs {
+                let st = if s.is_halted { "HALTED" } else { "RUNNING" };
+                println!(
+                    "  • {:<14} [{:<19}] eq=${:<7} HWM=${:<7} dd={}% | state={}",
+                    s.name, s.strategy, s.current_equity, s.high_water_mark, s.max_drawdown_pct, st
+                );
+            }
+            println!("------------------------------------------------------------");
+        }
+    }
+    Ok(())
+}
+
 fn print_positions_and_orders(db: &DbManager, db_path: &str) -> Result<(), NodeError> {
     println!("Active Positions:");
     let mut any_pos = false;
@@ -103,6 +120,20 @@ fn print_positions_and_orders(db: &DbManager, db_path: &str) -> Result<(), NodeE
                 pos.entry_price,
                 pos.current_stop_price,
                 pos.highest_price,
+                pos.bars_held,
+                pos.breakeven_active
+            );
+        }
+    }
+    if let Ok(subs) = crate::sub_account::get_all_sub_account_positions(db.conn()) {
+        for (sub, pos) in subs {
+            any_pos = true;
+            println!(
+                "  [{sub}] [{}] qty={} entry=${} stop=${} (held {} bars, be={})",
+                pos.symbol,
+                pos.qty,
+                pos.entry_price,
+                pos.current_stop_price,
                 pos.bars_held,
                 pos.breakeven_active
             );
@@ -179,5 +210,6 @@ pub fn display_status(target_path: &str) -> Result<(), NodeError> {
         tg_configured: tg.is_configured(),
     };
     print_metrics(&snap);
+    print_sub_accounts(&db)?;
     print_positions_and_orders(&db, &db_path)
 }

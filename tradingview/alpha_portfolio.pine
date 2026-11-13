@@ -1,0 +1,174 @@
+//@version=5
+indicator("Project Alpha — Multi-Strategy Portfolio Engine", shorttitle="Alpha Portfolio", overlay=true, precision=2)
+
+// =============================================================================
+// PROJECT ALPHA — SCALE-INVARIANT MULTI-STRATEGY ENGINE (Pine Script v5)
+// Supports all 3 orthogonal strategies:
+// 1. VOLATILITY_BREAKOUT (alphabreakout) - 4h Donchian Breakout + ER Chop Gate
+// 2. FUNDING_CARRY       (alphacarry)     - 8h Delta-Neutral Basis & Funding Harvest
+// 3. MACRO_TREND         (alphamacro)     - 1D Multi-Asset Momentum & Trend Following
+// =============================================================================
+
+// --- Master Strategy Selector ---
+strategy_mode = input.string("VOLATILITY_BREAKOUT", "Active Strategy", 
+     options=["VOLATILITY_BREAKOUT", "FUNDING_CARRY", "MACRO_TREND"], 
+     group="1. Master Selector", tooltip="Switch between the 3 Project Alpha strategies")
+
+// --- Strategy 1: VOLATILITY_BREAKOUT Settings ---
+grp_bo = "2. Volatility Breakout Settings (alphabreakout)"
+bo_donchian_len = input.int(20, "Donchian Period", group=grp_bo)
+bo_er_len       = input.int(24, "Efficiency Ratio (ER) Period", group=grp_bo)
+bo_er_thresh    = input.float(0.30, "ER Anti-Chop Floor", step=0.01, group=grp_bo)
+bo_atr_len      = input.int(14, "ATR Period", group=grp_bo)
+bo_atr_min_pct  = input.float(0.009, "Min ATR Volatility Floor (0.90%)", step=0.001, group=grp_bo)
+bo_ema_len      = input.int(200, "Regime Baseline EMA", group=grp_bo)
+bo_trail_mult   = input.float(3.0, "Chandelier ATR Trailing Stop Multiplier", step=0.1, group=grp_bo)
+
+// --- Strategy 2: FUNDING_CARRY Settings ---
+grp_carry = "3. Funding Carry Settings (alphacarry)"
+carry_hurdle_apr = input.float(10.0, "Annualized Funding Hurdle (APR %)", step=0.5, group=grp_carry)
+carry_basis_bps  = input.float(0.0, "Min Spot-Perp Basis (bps)", step=1.0, group=grp_carry)
+
+// --- Strategy 3: MACRO_TREND Settings ---
+grp_macro = "4. Macro Trend Settings (alphamacro)"
+macro_sma_len    = input.int(200, "Macro Trend SMA Period", group=grp_macro)
+macro_mom_len    = input.int(60, "Medium-Term Momentum Period", group=grp_macro)
+macro_donchian   = input.int(20, "Breakout Lookback", group=grp_macro)
+macro_trail_mult = input.float(2.5, "Macro ATR Trailing Stop Multiplier", step=0.1, group=grp_macro)
+
+// =============================================================================
+// QUANTITATIVE CALCULATIONS
+// =============================================================================
+
+// ATR & Volatility Floor
+atr_val = ta.atr(bo_atr_len)
+atr_pct = atr_val / close
+
+// Kaufman Efficiency Ratio (ER) Calculation
+net_change = math.abs(close - close[bo_er_len])
+path_sum = 0.0
+for i = 0 to bo_er_len - 1
+    path_sum += math.abs(close[i] - close[i + 1])
+er_val = path_sum > 0 ? net_change / path_sum : 0.0
+
+// Donchian Channels
+donchian_high = ta.highest(high[1], bo_donchian_len)
+donchian_low  = ta.lowest(low[1], bo_donchian_len)
+
+// Trend Baseline
+regime_ema = ta.ema(close, bo_ema_len)
+macro_sma  = ta.sma(close, macro_sma_len)
+
+// Trailing Stops
+var float bo_trailing_stop = na
+var float macro_trailing_stop = na
+
+// =============================================================================
+// SIGNALS & LOGIC
+// =============================================================================
+
+// 1. VOLATILITY_BREAKOUT Signal
+bo_filter_pass = (er_val >= bo_er_thresh) and (atr_pct >= bo_atr_min_pct) and (close > regime_ema)
+bo_buy_trigger = ta.crossover(close, donchian_high) and bo_filter_pass
+
+if bo_buy_trigger
+    bo_trailing_stop := high - (bo_trail_mult * atr_val)
+else if not na(bo_trailing_stop) and close > bo_trailing_stop
+    bo_trailing_stop := math.max(bo_trailing_stop, high - (bo_trail_mult * atr_val))
+else if not na(bo_trailing_stop) and close <= bo_trailing_stop
+    bo_trailing_stop := na
+
+bo_exit_trigger = not na(bo_trailing_stop[1]) and (close < bo_trailing_stop[1])
+
+// 2. FUNDING_CARRY Signal Simulation
+carry_buy_trigger = (atr_pct >= 0.005) and (close >= regime_ema)
+carry_inversion_stop = (close < regime_ema * 0.98)
+
+// 3. MACRO_TREND Signal
+macro_mom_pass = (close > close[macro_mom_len]) and (close > macro_sma)
+macro_breakout = ta.crossover(close, ta.highest(high[1], macro_donchian))
+macro_buy_trigger = macro_breakout and macro_mom_pass
+
+if macro_buy_trigger
+    macro_trailing_stop := high - (macro_trail_mult * atr_val)
+else if not na(macro_trailing_stop) and close > macro_trailing_stop
+    macro_trailing_stop := math.max(macro_trailing_stop, high - (macro_trail_mult * atr_val))
+else if not na(macro_trailing_stop) and close <= macro_trailing_stop
+    macro_trailing_stop := na
+
+macro_exit_trigger = not na(macro_trailing_stop[1]) and (close < macro_trailing_stop[1])
+
+// Active Signal Selection based on strategy_mode
+is_bo    = (strategy_mode == "VOLATILITY_BREAKOUT")
+is_carry = (strategy_mode == "FUNDING_CARRY")
+is_macro = (strategy_mode == "MACRO_TREND")
+
+active_buy  = is_bo ? bo_buy_trigger  : (is_carry ? carry_buy_trigger  : macro_buy_trigger)
+active_exit = is_bo ? bo_exit_trigger : (is_carry ? carry_inversion_stop : macro_exit_trigger)
+active_stop = is_bo ? bo_trailing_stop : (is_macro ? macro_trailing_stop : na)
+
+// =============================================================================
+// PLOTTING & VISUALIZATION
+// =============================================================================
+
+// Plots for Breakout Mode
+plot(is_bo ? donchian_high : na, "Donchian Upper (20)", color=color.new(color.teal, 30), linewidth=2)
+plot(is_bo ? donchian_low  : na, "Donchian Lower (20)", color=color.new(color.maroon, 40), linewidth=1)
+plot(is_bo ? regime_ema    : na, "200 EMA Baseline",    color=color.new(color.orange, 20), linewidth=2)
+
+// Plots for Macro Trend Mode
+plot(is_macro ? macro_sma  : na, "200 SMA Macro Trend", color=color.new(color.blue, 20), linewidth=2)
+
+// Trailing Stop Line
+plot(active_stop, "ATR Chandelier Trail Stop", color=color.new(color.red, 10), linewidth=2, style=plot.style_linebr)
+
+// Buy / Long Signal Shapes
+plotshape(active_buy, title="Buy Entry Signal", style=shape.triangleup,
+     location=location.belowbar, color=color.green, size=size.normal, text="ALPHA BUY")
+
+// Exit / Stop Signal Shapes
+plotshape(active_exit, title="Exit / Stop Signal", style=shape.triangledown,
+     location=location.abovebar, color=color.red, size=size.normal, text="EXIT")
+
+// =============================================================================
+// HUD DASHBOARD TABLE
+// =============================================================================
+var table hud = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
+if barstate.islast
+    sub_acc = is_bo ? "alphabreakout" : (is_carry ? "alphacarry" : "alphamacro")
+    table.cell(hud, 0, 0, "Strategy Mode", bgcolor=color.new(color.blue, 40), text_color=color.white)
+    table.cell(hud, 1, 0, strategy_mode, bgcolor=color.new(color.blue, 40), text_color=color.white)
+
+    table.cell(hud, 0, 1, "OKX Sub-Account", bgcolor=color.new(color.black, 50), text_color=color.yellow)
+    table.cell(hud, 1, 1, sub_acc, bgcolor=color.new(color.black, 50), text_color=color.yellow)
+
+    table.cell(hud, 0, 2, "Chop Gate (ER 24)", bgcolor=color.new(color.black, 50), text_color=color.white)
+    er_txt = str.tostring(er_val, "#.##") + (er_val >= bo_er_thresh ? " (PASS)" : " (CHOP)")
+    table.cell(hud, 1, 2, er_txt, bgcolor=color.new(color.black, 50), text_color=er_val >= bo_er_thresh ? color.green : color.red)
+
+    table.cell(hud, 0, 3, "Volatility (ATR%)", bgcolor=color.new(color.black, 50), text_color=color.white)
+    atr_txt = str.tostring(atr_pct * 100, "#.##") + "%" + (atr_pct >= bo_atr_min_pct ? " (PASS)" : " (LOW)")
+    table.cell(hud, 1, 3, atr_txt, bgcolor=color.new(color.black, 50), text_color=atr_pct >= bo_atr_min_pct ? color.green : color.red)
+
+    table.cell(hud, 0, 4, "Regime Baseline", bgcolor=color.new(color.black, 50), text_color=color.white)
+    reg_pass = is_macro ? (close > macro_sma) : (close > regime_ema)
+    table.cell(hud, 1, 4, reg_pass ? "BULLISH (PASS)" : "BEARISH (ABSTAIN)", bgcolor=color.new(color.black, 50), text_color=reg_pass ? color.green : color.red)
+
+// =============================================================================
+// UNIFIED ALERT CONDITIONS & DYNAMIC WEBHOOKS (OKX Sub-Accounts)
+// =============================================================================
+// Dynamic Alert Calls (usable with TradingView "Any alert() function call")
+sub_acc_name = is_bo ? "alphabreakout" : (is_carry ? "alphacarry" : "alphamacro")
+
+if active_buy
+    alert('{"sub_account": "' + sub_acc_name + '", "strategy": "' + strategy_mode + '", "action": "BUY", "ticker": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + '}', alert.freq_once_per_bar_close)
+
+if active_exit
+    alert('{"sub_account": "' + sub_acc_name + '", "strategy": "' + strategy_mode + '", "action": "CLOSE", "ticker": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + '}', alert.freq_once_per_bar_close)
+
+// Static Alert Conditions (compatible with standard alertcondition dialog)
+alertcondition(active_buy, title="Alpha Long Entry Alert", 
+     message='{"action": "BUY", "ticker": "{{ticker}}", "price": {{close}}}')
+
+alertcondition(active_exit, title="Alpha Stop/Exit Alert", 
+     message='{"action": "CLOSE", "ticker": "{{ticker}}", "price": {{close}}}')

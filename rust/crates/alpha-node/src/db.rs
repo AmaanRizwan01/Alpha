@@ -43,37 +43,40 @@ impl DbManager {
         Ok(())
     }
 
+    pub fn conn(&self) -> &Connection {
+        &self.conn
+    }
+
     pub fn insert_order(
         &self,
         intent: &OrderIntent,
         status: &str,
         now_ms: i64,
     ) -> Result<(), NodeError> {
-        let mut stmt = self.conn.prepare_cached(
-            "INSERT INTO orders (
-                client_order_id, venue, symbol, side, order_type, price, qty,
-                stop_loss_price, take_profit_price, status, created_at_ms, updated_at_ms
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-        )?;
-
-        let price_str = intent.price.map(|p| p.to_string());
+        let sql =
+            "INSERT INTO orders (client_order_id, venue, symbol, side, order_type, price, qty, \
+                   stop_loss_price, take_profit_price, status, created_at_ms, updated_at_ms) \
+                   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)";
+        let p_str = intent.price.map(|p| p.to_string());
         let sl_str = intent.stop_loss_price.map(|p| p.to_string());
         let tp_str = intent.take_profit_price.map(|p| p.to_string());
-
-        stmt.execute(params![
-            intent.client_order_id,
-            format!("{:?}", intent.venue),
-            intent.symbol,
-            format!("{:?}", intent.side),
-            format!("{:?}", intent.order_type),
-            price_str,
-            intent.qty.to_string(),
-            sl_str,
-            tp_str,
-            status,
-            now_ms,
-            now_ms,
-        ])?;
+        self.conn.execute(
+            sql,
+            params![
+                intent.client_order_id,
+                format!("{:?}", intent.venue),
+                intent.symbol,
+                format!("{:?}", intent.side),
+                format!("{:?}", intent.order_type),
+                p_str,
+                intent.qty.to_string(),
+                sl_str,
+                tp_str,
+                status,
+                now_ms,
+                now_ms
+            ],
+        )?;
         Ok(())
     }
 
@@ -103,31 +106,27 @@ impl DbManager {
         bars_held: u32,
         now_ms: i64,
     ) -> Result<(), NodeError> {
-        let mut stmt = self.conn.prepare_cached(
-            "INSERT INTO positions (
-                symbol, venue, qty, entry_price, current_stop_price, highest_price,
-                breakeven_active, bars_held, updated_at_ms
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-            ON CONFLICT(symbol) DO UPDATE SET
-                qty = excluded.qty,
-                current_stop_price = excluded.current_stop_price,
-                highest_price = excluded.highest_price,
-                breakeven_active = excluded.breakeven_active,
-                bars_held = excluded.bars_held,
-                updated_at_ms = excluded.updated_at_ms",
+        let sql = "INSERT INTO positions (symbol, venue, qty, entry_price, current_stop_price, \
+                   highest_price, breakeven_active, bars_held, updated_at_ms) \
+                   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) \
+                   ON CONFLICT(symbol) DO UPDATE SET qty = excluded.qty, \
+                   current_stop_price = excluded.current_stop_price, highest_price = excluded.highest_price, \
+                   breakeven_active = excluded.breakeven_active, bars_held = excluded.bars_held, \
+                   updated_at_ms = excluded.updated_at_ms";
+        self.conn.execute(
+            sql,
+            params![
+                symbol,
+                venue,
+                qty.to_string(),
+                entry_price.to_string(),
+                stop_price.to_string(),
+                highest_price.to_string(),
+                if breakeven { 1 } else { 0 },
+                bars_held,
+                now_ms,
+            ],
         )?;
-
-        stmt.execute(params![
-            symbol,
-            venue,
-            qty.to_string(),
-            entry_price.to_string(),
-            stop_price.to_string(),
-            highest_price.to_string(),
-            if breakeven { 1 } else { 0 },
-            bars_held,
-            now_ms,
-        ])?;
         Ok(())
     }
 

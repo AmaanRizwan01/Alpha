@@ -13,6 +13,7 @@
 pub mod binance;
 pub mod binance_ws;
 pub mod error;
+pub mod fapi;
 pub mod okx;
 pub mod signer;
 
@@ -22,6 +23,10 @@ pub use binance_ws::{
     BinanceWsMessage, BinanceWsTrade,
 };
 pub use error::VenueError;
+pub use fapi::{
+    build_funding_rate_path, build_premium_index_path, parse_funding_rates, parse_premium_index,
+    BinanceFundingRateRecord, BinancePremiumIndexRecord,
+};
 pub use okx::{
     build_okx_atomic_order, OkxAttachAlgo, OkxBookSequencer, OkxDeadManPayload, OkxOrderPayload,
 };

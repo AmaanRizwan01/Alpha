@@ -84,8 +84,7 @@ impl TelegramNotifier {
                     "reply_markup": {
                         "keyboard": [
                             [{"text": "📊 Status"}, {"text": "📈 Positions"}],
-                            [{"text": "💰 PnL"}, {"text": "📋 Orders"}],
-                            [{"text": "🚨 Flatten"}, {"text": "ℹ️ Help"}]
+                            [{"text": "💰 PnL"}, {"text": "🚨 Flatten"}]
                         ],
                         "resize_keyboard": true,
                         "is_persistent": true
@@ -194,6 +193,16 @@ impl TelegramNotifier {
              Current Drawdown: <b>{dd_pct}%</b> (Limit: 6.0%)\n\
              Reason: <i>{reason}</i>\n\
              Action: Trading HALTED immediately."
+        );
+        self.send_alert(msg);
+    }
+
+    pub fn notify_adl_desync(&self, symbol: &str, spot_qty: Decimal, perp_qty: Decimal) {
+        let msg = format!(
+            "<b>EMERGENCY: ADL DESYNC DETECTED</b>\n\
+             Symbol: <code>{symbol}</code>\n\
+             Spot Qty: <b>{spot_qty}</b> | Perp Qty: <b>{perp_qty}</b>\n\
+             Action: Emergency Market Sell Spot & Trading HALTED immediately."
         );
         self.send_alert(msg);
     }

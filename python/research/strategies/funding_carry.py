@@ -60,12 +60,16 @@ def _make_carry_trade(
 
 def _calc_funding_apr(rates: np.ndarray, alpha: float) -> np.ndarray:
     """Calculate EMA-smoothed annualized funding rate (APR)."""
-    n = len(rates)
-    ema = np.zeros(n)
-    ema[0] = rates[0]
-    for i in range(1, n):
-        ema[i] = alpha * rates[i] + (1.0 - alpha) * ema[i - 1]
-    return ema * 3.0 * 365.0
+    try:
+        import alpha_py
+        return np.array(alpha_py.calc_carry_apr(rates.tolist(), alpha))
+    except (ImportError, AttributeError):
+        n = len(rates)
+        ema = np.zeros(n)
+        ema[0] = rates[0]
+        for i in range(1, n):
+            ema[i] = alpha * rates[i] + (1.0 - alpha) * ema[i - 1]
+        return ema * 3.0 * 365.0
 
 
 def _build_equity_df(trades: list[Trade]) -> pl.DataFrame:
@@ -128,9 +132,43 @@ class FundingCarryStrategy(BaseStrategy):
         rates = f_df["funding_rate"].to_numpy()
         times = f_df["datetime"].to_list()
         n = len(rates)
+
+        try:
+            import alpha_py
+            ts_ms = [int(t.timestamp() * 1000) for t in times]
+            rust_trades = alpha_py.simulate_carry_arbitrage(
+                rates.tolist(),
+                ts_ms,
+                self.entry_apr,
+                self.exit_apr,
+                self.ema_alpha,
+                self.inversion_stop,
+                self.c_rt,
+                self.fee_hurdle_mult,
+                self.r_unit,
+            )
+            trades = [
+                _make_carry_trade(
+                    self.strategy_id,
+                    symbol,
+                    self.timeframe,
+                    times[rt.entry_idx],
+                    times[rt.exit_idx],
+                    rt.epochs_held,
+                    rt.gross_return_pct,
+                    rt.fee_pct_total,
+                    self.r_unit,
+                    rt.exit_reason,
+                )
+                for rt in rust_trades
+            ]
+            return trades, n
+        except (ImportError, AttributeError):
+            pass
+
         apr = _calc_funding_apr(rates, self.ema_alpha)
 
-        trades: list[Trade] = []
+        trades = []
         in_pos = False
         entry_idx = 0
         decay_consecutive = 0

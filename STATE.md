@@ -2,15 +2,18 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox) - Day 3 of 56
-- **Active Sprint:** Sprint 5.8 Deployed & Phase 5 Paper Burn-In (Day 3 of 56)
-- **Git Branch:** `main`
+- **Active Sprint:** Sprint 5.10 — COMPLETE. Merged to `main`. Proxmox LXC 101 running latest release binary.
+- **Git Branch:** `main` (Sprint 5.10 merged from `feat/p5-s5.10-subaccounts-sim-tv-tg`, commit `883ca2f`)
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.8 release binary running steadily on Proxmox LXC 101 (`alpha-node.service` under PID 14836). Consolidated 3 durable, orthogonal winning strategies with zero cross-dependencies: `VOLATILITY_BREAKOUT` (benchmark, +0.156R EV, 1.49 PF), `FUNDING_CARRY` (+4.879R EV, 464.12 PF, 92.3% win rate with Fee-Hurdle Lock), and `MACRO_TREND` (+0.257R EV, 1.94 PF). Implemented and verified Fee-Hurdle Lock, Predictive Funding Pre-Exit, Unified/Portfolio Margin specification, and sub-100ms ADL Desync Watchdog. All 76 cargo workspace tests and 38 pytest tests green.
+- **Status:** Sprint 5.10 fully deployed end-to-end. Multi-sub-account simulation (`alphabreakout`, `alphacarry`, `alphamacro`) live on Proxmox with isolated SQLite state, independent drawdown tracking, and 6% circuit breakers. Telegram keyboard simplified to clean 2x2 grid. Unified TradingView Pine Script v5 published (`tradingview/alpha_portfolio.pine`). `.env` prepped: all 14 environment variables populated (sub-account slots temporarily use main OKX read-only key until $100 deposit + sub-account key generation; variable names are final — only the values need swapping at go-live). All 96 cargo workspace tests and 43 pytest tests green on both Windows and Proxmox Debian 12. Node `RUNNING / HEALTHY` verified via `alpha-node status`.
 
 ## Immediate Next Task
-1. Monitor live Phase 5 paper burn-in telemetry on Proxmox LXC 101 (Day 3 -> Day 4 of 56).
-2. Verify Telegram bot interaction (`/status`, `/positions`, `/pnl`) on mobile.
-3. Check WAL SQLite persistence and trailing ratchet across 4h bar boundaries.
+1. **Fund sub-accounts**: Deposit ≥ $100 each to `alphabreakout`, `alphacarry`, `alphamacro` via OKX → Assets → Sub-Account Transfer.
+2. **Generate trade API keys**: For each funded sub-account, create a V5 API key with `Read + Trade` (no Withdraw), bind to Proxmox static IP.
+3. **Swap keys in `.env`**: Replace the 3 `OKX_API_KEY_BREAKOUT/CARRY/MACRO` placeholder values with the real sub-account keys.
+4. **Sync to Proxmox**: `scp c:/Coding/alpha/.env root@192.168.1.230:/opt/alpha/.env`
+5. **Flip to live**: Change `allow_live_orders = true` in `configs/live_100.toml`, restart `alpha-node.service`.
+6. **Continue monitoring** paper burn-in until 4-week paper gate passes (see Phase 4 roadmap).
 
 ## Verified Milestones
 - [x] Master architecture specification audited ([`PLAN.md`](file:///c:/Coding/alpha/PLAN.md) v3.2).
@@ -79,6 +82,8 @@
 - [x] Created comprehensive backtest repository documentation in [`docs/backtests/`](file:///c:/Coding/alpha/docs/backtests/): structured individual markdown reports for all three surviving strategies (`VOLATILITY_BREAKOUT.md`, `FUNDING_CARRY.md`, `MACRO_TREND.md`), master portfolio comparison matrix (`README.md`), and quantitative post-mortem on rejected candidates (`KILLED_STRATEGIES.md`). Fully documented $100 starting capital performance, win rates, payoff ratios, yearly/monthly/weekly/daily earnings, drawdowns, and loss breakdowns.
 - [x] Cleaned codebase and restructured documentation hierarchy: decommissioned legacy `brainstorming/` directory (deleted obsolete v1-v4 plan drafts, relocated canonical multi-strategy specification to `docs/STRATEGY.md`), reorganized uppercase `BACKTEST/` into clean `docs/backtests/`, resolved `python/research/run_walkforward.py` standalone module import pathing, purged transient SQLite test databases and stale pycache artifacts. Verified 100% test suite pass across Rust (76 cargo tests) and Python (38 pytest tests).
 - [x] Audited codebase architecture & research laboratory: established canonical Quantitative Research Laboratory specification in [`python/research/README.md`](file:///c:/Coding/alpha/python/research/README.md), resolved Windows SQLite file handle locking in `alpha-node` test suites (`test_engine.rs`, `test_telemetry.rs`) ensuring zero persistent test artifact leakage, updated root `README.md` repository layout, and verified full suite health across Windows workstation and Proxmox LXC 101 node.
+- [x] Implemented Sprint 5.9: Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sim.rs`, `carry_sizing.rs`) with Fee-Hurdle Lock, Funding Inversion Stop, and delta-neutral scale-invariant sizing; exposed via PyO3 in `alpha-py` (`carry.rs`); implemented Binance Futures models and parsers in `alpha-venues` (`fapi.rs`); implemented live carry evaluation (`carry_signal.rs`) with Predictive Funding Pre-Exit and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with Drill 6 in `alpha-node`. All 91 cargo workspace tests and 43 pytest tests green.
+- [x] Implemented Sprint 5.10: Added OKX sub-account setup runbook and $100 balance requirement in `PLAN.md` Section 5.1; built multi-sub-account simulation in `alpha-node` with isolated SQLite state (`sub_accounts`, `sub_account_positions`, `sub_account_orders`), independent equity tracking, drawdown calculation, and circuit breakers for `alphabreakout`, `alphacarry`, and `alphamacro`; simplified Telegram custom keyboard to sleek 2x2 grid (`📊 Status`, `📈 Positions`, `💰 PnL`, `🚨 Flatten`) with sub-account breakdown; authored unified Pine Script v5 script in `tradingview/alpha_portfolio.pine` and documentation in `docs/TRADINGVIEW.md`; enforced $\le 250$ line limits across all files. All 95 cargo workspace tests and 43 pytest tests green.
 
 ## Active Blockers / Decisions
-- None. Ready for container release build and live Telegram mobile interaction test.
+- None. Branch `feat/p5-s5.10-subaccounts-sim-tv-tg` verified and ready for deployment to Proxmox LXC 101.

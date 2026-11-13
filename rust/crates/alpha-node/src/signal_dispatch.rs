@@ -11,6 +11,16 @@ pub fn evaluate_and_dispatch(
     symbol: &str,
     now_ms: i64,
 ) -> Result<(), NodeError> {
+    if let Ok(Some(sub)) = crate::sub_account::get_sub_account(engine.db.conn(), "alphabreakout") {
+        if sub.is_halted {
+            eprintln!(
+                "[signal-h1] Sub-account 'alphabreakout' is HALTED ({}). Abstaining.",
+                sub.halt_reason.unwrap_or_default()
+            );
+            return Ok(());
+        }
+    }
+
     let (hwm, _, _) = engine.db.get_equity_hwm()?;
     let filter = default_filter_for_symbol(symbol);
     let buf = engine
@@ -81,6 +91,13 @@ fn submit_signal_order(
         &client_id,
     )?;
     engine.db.insert_order(&intent, "WORKING", now_ms)?;
+    let _ = crate::sub_account::insert_sub_account_order(
+        engine.db.conn(),
+        "alphabreakout",
+        &intent,
+        "WORKING",
+        now_ms,
+    );
     engine.telegram.notify_order_submitted(
         symbol,
         "BUY",
