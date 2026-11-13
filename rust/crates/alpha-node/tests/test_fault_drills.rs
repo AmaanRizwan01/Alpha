@@ -123,3 +123,41 @@ fn drill_5_dead_man_switch_timeout_bounds() {
     let json = serde_json::to_string(&payload).unwrap();
     assert_eq!(json, r#"{"timeOut":"60"}"#);
 }
+
+#[test]
+fn drill_6_adl_desync_watchdog_triggers_halt_and_emergency_action() {
+    let db = DbManager::open_in_memory().unwrap();
+    let tg = alpha_node::telegram::TelegramNotifier::new(None, None);
+
+    // Initial position: 1.0 BTC spot long hedged by 1.0 BTC perp short
+    let initial_check =
+        alpha_node::adl_watchdog::check_position_adl_desync("BTCUSDT", dec!(1.0), dec!(-1.0), None);
+    assert!(!initial_check.is_desynced);
+
+    // ADL liquidation closes 5% of perp short: perp drops to -0.95 -> desync!
+    let desync_check = alpha_node::adl_watchdog::check_position_adl_desync(
+        "BTCUSDT",
+        dec!(1.0),
+        dec!(-0.95),
+        None,
+    );
+    assert!(desync_check.is_desynced);
+
+    // Trigger watchdog action: must persist halt and notify Telegram
+    alpha_node::adl_watchdog::handle_adl_desync_trigger(
+        &db,
+        &tg,
+        &desync_check.symbol,
+        desync_check.spot_qty,
+        desync_check.perp_qty,
+        4000,
+    )
+    .unwrap();
+
+    let (halted, reason) = db.get_halt_state().unwrap();
+    assert!(halted);
+    let r = reason.unwrap();
+    assert!(r.contains("HALTED_ADL_DESYNC"));
+    assert!(r.contains("spot_qty=1.0"));
+    assert!(r.contains("perp_qty=-0.95"));
+}

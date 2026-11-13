@@ -2,10 +2,10 @@
 
 ## Current Snapshot
 - **Active Phase:** Phase 5 (8-Week Paper Burn-In on Proxmox) - Day 3 of 56
-- **Active Sprint:** Sprint 5.8 Deployed & Phase 5 Paper Burn-In (Day 3 of 56)
-- **Git Branch:** `main`
+- **Active Sprint:** Sprint 5.9 Rust FUNDING_CARRY Port & Proxmox Readiness (Branch: `feat/p5-s5.9-funding-carry-rust`)
+- **Git Branch:** `feat/p5-s5.9-funding-carry-rust`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Sprint 5.8 release binary running steadily on Proxmox LXC 101 (`alpha-node.service` under PID 14836). Consolidated 3 durable, orthogonal winning strategies with zero cross-dependencies: `VOLATILITY_BREAKOUT` (benchmark, +0.156R EV, 1.49 PF), `FUNDING_CARRY` (+4.879R EV, 464.12 PF, 92.3% win rate with Fee-Hurdle Lock), and `MACRO_TREND` (+0.257R EV, 1.94 PF). Implemented and verified Fee-Hurdle Lock, Predictive Funding Pre-Exit, Unified/Portfolio Margin specification, and sub-100ms ADL Desync Watchdog. All 76 cargo workspace tests and 38 pytest tests green.
+- **Status:** Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sizing.rs`), exposed via `alpha-py` (`carry.rs`), added `alpha-venues` Binance Futures models (`fapi.rs`), implemented live carry evaluation (`carry_signal.rs`) with predictive pre-exit, and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with Drill 6 in `alpha-node`. Live Proxmox LXC 101 Phase 5 paper burn-in (Day 3 of 56) undisturbed. All 87 cargo workspace tests and 41 pytest tests green.
 
 ## Immediate Next Task
 1. Monitor live Phase 5 paper burn-in telemetry on Proxmox LXC 101 (Day 3 -> Day 4 of 56).
@@ -79,6 +79,7 @@
 - [x] Created comprehensive backtest repository documentation in [`docs/backtests/`](file:///c:/Coding/alpha/docs/backtests/): structured individual markdown reports for all three surviving strategies (`VOLATILITY_BREAKOUT.md`, `FUNDING_CARRY.md`, `MACRO_TREND.md`), master portfolio comparison matrix (`README.md`), and quantitative post-mortem on rejected candidates (`KILLED_STRATEGIES.md`). Fully documented $100 starting capital performance, win rates, payoff ratios, yearly/monthly/weekly/daily earnings, drawdowns, and loss breakdowns.
 - [x] Cleaned codebase and restructured documentation hierarchy: decommissioned legacy `brainstorming/` directory (deleted obsolete v1-v4 plan drafts, relocated canonical multi-strategy specification to `docs/STRATEGY.md`), reorganized uppercase `BACKTEST/` into clean `docs/backtests/`, resolved `python/research/run_walkforward.py` standalone module import pathing, purged transient SQLite test databases and stale pycache artifacts. Verified 100% test suite pass across Rust (76 cargo tests) and Python (38 pytest tests).
 - [x] Audited codebase architecture & research laboratory: established canonical Quantitative Research Laboratory specification in [`python/research/README.md`](file:///c:/Coding/alpha/python/research/README.md), resolved Windows SQLite file handle locking in `alpha-node` test suites (`test_engine.rs`, `test_telemetry.rs`) ensuring zero persistent test artifact leakage, updated root `README.md` repository layout, and verified full suite health across Windows workstation and Proxmox LXC 101 node.
+- [x] Implemented Sprint 5.9: Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sizing.rs`) with Fee-Hurdle Lock, Funding Inversion Stop, and delta-neutral scale-invariant sizing; exposed via PyO3 in `alpha-py` (`carry.rs`) and updated `python/research/strategies/funding_carry.py` to uphold single source of truth; implemented Binance Futures models and parsers in `alpha-venues` (`fapi.rs`); implemented live carry evaluation (`carry_signal.rs`) with Predictive Funding Pre-Exit and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with Drill 6 in `alpha-node`. All 87 cargo workspace tests and 41 pytest tests green.
 
 ## Active Blockers / Decisions
-- None. Ready for container release build and live Telegram mobile interaction test.
+- None. Branch `feat/p5-s5.9-funding-carry-rust` verified and ready for review/merge.

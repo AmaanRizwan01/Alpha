@@ -86,3 +86,35 @@ def test_parquet_data_integration():
 
     atr_val = alpha_py.atr(highs, lows, closes, 14)
     assert atr_val > 0.0
+
+
+def test_carry_apr_calculation_py():
+    rates = [0.0001, 0.0002]
+    aprs = alpha_py.calc_carry_apr(rates, 0.20)
+    assert len(aprs) == 2
+    assert abs(aprs[0] - 0.1095) < 1e-4
+    assert aprs[1] > aprs[0]
+
+
+def test_carry_sizing_py():
+    # Capital $100 on $65k BTC
+    res = alpha_py.calc_carry_sizing(
+        capital=100.0,
+        spot_price=65000.0,
+        perp_price=65000.0,
+        tick_size=0.10,
+        step_size=0.00001,
+        min_qty=0.00001,
+        min_notional=5.0,
+    )
+    assert res is not None
+    assert res.spot_qty > 0.0
+    assert res.perp_qty > 0.0
+    assert res.spot_notional >= 5.0
+    assert abs(res.spot_capital - (200.0 / 3.0)) < 0.1
+
+
+def test_adl_desync_py():
+    assert not alpha_py.check_adl_desync_py(1.0, -1.0, 0.99)
+    assert alpha_py.check_adl_desync_py(1.0, -0.98, 0.99)
+

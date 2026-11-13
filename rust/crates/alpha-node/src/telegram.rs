@@ -197,4 +197,14 @@ impl TelegramNotifier {
         );
         self.send_alert(msg);
     }
+
+    pub fn notify_adl_desync(&self, symbol: &str, spot_qty: Decimal, perp_qty: Decimal) {
+        let msg = format!(
+            "<b>EMERGENCY: ADL DESYNC DETECTED</b>\n\
+             Symbol: <code>{symbol}</code>\n\
+             Spot Qty: <b>{spot_qty}</b> | Perp Qty: <b>{perp_qty}</b>\n\
+             Action: Emergency Market Sell Spot & Trading HALTED immediately."
+        );
+        self.send_alert(msg);
+    }
 }
