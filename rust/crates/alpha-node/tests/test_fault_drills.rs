@@ -143,8 +143,8 @@ fn drill_6_adl_desync_watchdog_triggers_halt_and_emergency_action() {
     );
     assert!(desync_check.is_desynced);
 
-    // Trigger watchdog action: must persist halt and notify Telegram
-    alpha_node::adl_watchdog::handle_adl_desync_trigger(
+    // Trigger watchdog action: must persist halt, notify Telegram, and return emergency market close order
+    let close_intent = alpha_node::adl_watchdog::handle_adl_desync_trigger(
         &db,
         &tg,
         &desync_check.symbol,
@@ -160,4 +160,9 @@ fn drill_6_adl_desync_watchdog_triggers_halt_and_emergency_action() {
     assert!(r.contains("HALTED_ADL_DESYNC"));
     assert!(r.contains("spot_qty=1.0"));
     assert!(r.contains("perp_qty=-0.95"));
+    assert!(close_intent.is_some());
+    let order = close_intent.unwrap();
+    assert_eq!(order.side, alpha_types::order::Side::Sell);
+    assert_eq!(order.qty, dec!(1.0));
+    assert_eq!(order.order_type, alpha_types::order::OrderType::Market);
 }

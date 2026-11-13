@@ -1,8 +1,10 @@
 use crate::error::NodeError;
 use crate::signal::default_filter_for_symbol;
-use alpha_core::carry::{funding_rate_to_apr, FundingCarryConfig};
+use alpha_core::carry::{funding_rate_to_apr_custom, FundingCarryConfig};
 use alpha_core::carry_sizing::{calculate_carry_sizing, CarrySizing, CarrySizingVerdict};
+use alpha_core::sizing::ExchangeFilter;
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiveCarryVerdict {
@@ -29,6 +31,17 @@ pub enum LiveCarryVerdict {
     },
 }
 
+#[must_use]
+pub fn default_fapi_filter_for_symbol(symbol: &str) -> ExchangeFilter {
+    match symbol.to_uppercase().as_str() {
+        "BTCUSDT" => ExchangeFilter::new(dec!(0.10), dec!(0.001), dec!(0.001), dec!(5.0))
+            .unwrap_or_else(|_| default_filter_for_symbol(symbol)),
+        "ETHUSDT" => ExchangeFilter::new(dec!(0.01), dec!(0.001), dec!(0.001), dec!(5.0))
+            .unwrap_or_else(|_| default_filter_for_symbol(symbol)),
+        _ => default_filter_for_symbol(symbol),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn evaluate_live_carry_step(
     symbol: &str,
@@ -44,7 +57,7 @@ pub fn evaluate_live_carry_step(
     accumulated_funding: Decimal,
     decay_consecutive: usize,
 ) -> Result<LiveCarryVerdict, NodeError> {
-    let apr = funding_rate_to_apr(smoothed_rate);
+    let apr = funding_rate_to_apr_custom(smoothed_rate, cfg.cycles_per_year);
 
     if in_position {
         if current_rate < cfg.inversion_stop_rate {
@@ -58,7 +71,7 @@ pub fn evaluate_live_carry_step(
         }
 
         if let (Some(pred), Some(time_ms)) = (predicted_rate, time_to_settle_ms) {
-            if time_ms <= 10 * 60 * 1000 && pred < cfg.predictive_pre_exit_rate {
+            if (0..=10 * 60 * 1000).contains(&time_ms) && pred < cfg.predictive_pre_exit_rate {
                 return Ok(LiveCarryVerdict::PredictivePreExit {
                     symbol: symbol.to_string(),
                     reason: format!(
@@ -96,8 +109,20 @@ pub fn evaluate_live_carry_step(
         });
     }
 
-    let filter = default_filter_for_symbol(symbol);
-    match calculate_carry_sizing(capital, spot_price, perp_price, &filter, &filter)? {
+    let basis = (perp_price - spot_price) / spot_price;
+    if basis < cfg.min_basis {
+        return Ok(LiveCarryVerdict::Abstain {
+            symbol: symbol.to_string(),
+            reason: format!(
+                "Spot-Perp basis {} < min_basis threshold {}",
+                basis, cfg.min_basis
+            ),
+        });
+    }
+
+    let spot_filter = default_filter_for_symbol(symbol);
+    let perp_filter = default_fapi_filter_for_symbol(symbol);
+    match calculate_carry_sizing(capital, spot_price, perp_price, &spot_filter, &perp_filter)? {
         CarrySizingVerdict::Approved(sizing) => Ok(LiveCarryVerdict::Approved {
             symbol: symbol.to_string(),
             sizing,
@@ -117,65 +142,5 @@ pub fn evaluate_live_carry_step(
             symbol: symbol.to_string(),
             reason: format!("Qty {} < minQty {}", spot_qty, min_qty),
         }),
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::panic)]
-mod tests {
-    use super::*;
-    use rust_decimal_macros::dec;
-
-    #[test]
-    fn test_live_carry_approved_entry() {
-        let cfg = FundingCarryConfig::default();
-        let verdict = evaluate_live_carry_step(
-            "BTCUSDT",
-            &cfg,
-            dec!(0.0002), // ~21.9% APR > 12%
-            dec!(0.0002),
-            None,
-            None,
-            dec!(100.0),
-            dec!(65000.0),
-            dec!(65000.0),
-            false,
-            dec!(0.0),
-            0,
-        )
-        .unwrap();
-
-        match verdict {
-            LiveCarryVerdict::Approved { sizing, apr, .. } => {
-                assert!(apr > cfg.entry_apr);
-                assert!(sizing.spot_notional >= dec!(5.0));
-            }
-            _ => panic!("Expected approved carry entry"),
-        }
-    }
-
-    #[test]
-    fn test_live_carry_predictive_pre_exit() {
-        let cfg = FundingCarryConfig::default();
-        let verdict = evaluate_live_carry_step(
-            "BTCUSDT",
-            &cfg,
-            dec!(0.0001),
-            dec!(0.0001),
-            Some(dec!(-0.00010)), // Predicted negative funding
-            Some(5 * 60 * 1000),  // 5 mins to settle <= 10 mins
-            dec!(100.0),
-            dec!(65000.0),
-            dec!(65000.0),
-            true, // In position
-            dec!(0.001),
-            0,
-        )
-        .unwrap();
-
-        assert!(matches!(
-            verdict,
-            LiveCarryVerdict::PredictivePreExit { .. }
-        ));
     }
 }

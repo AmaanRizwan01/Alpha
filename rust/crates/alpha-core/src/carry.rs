@@ -3,7 +3,9 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
-const CYCLES_PER_YEAR: Decimal = dec!(1095); // 3 funding cycles per day * 365 days
+pub use crate::carry_sim::*;
+
+pub const DEFAULT_CYCLES_PER_YEAR: Decimal = dec!(1095); // 3 funding cycles per day * 365 days
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FundingCarryConfig {
@@ -17,6 +19,8 @@ pub struct FundingCarryConfig {
     pub perp_fraction: Decimal,
     pub predictive_pre_exit_rate: Decimal,
     pub adl_tolerance_ratio: Decimal,
+    pub cycles_per_year: Decimal,
+    pub min_basis: Decimal,
 }
 
 impl Default for FundingCarryConfig {
@@ -32,6 +36,8 @@ impl Default for FundingCarryConfig {
             perp_fraction: dec!(2) / dec!(3),
             predictive_pre_exit_rate: dec!(-0.00005),
             adl_tolerance_ratio: dec!(0.99),
+            cycles_per_year: DEFAULT_CYCLES_PER_YEAR,
+            min_basis: dec!(-0.0005),
         }
     }
 }
@@ -51,10 +57,22 @@ impl FundingCarryConfig {
                 reason: "entry APR must exceed exit APR",
             });
         }
+        if exit_apr <= Decimal::ZERO {
+            return Err(CoreError::InvalidParameter {
+                name: "exit_apr",
+                reason: "exit APR must be strictly positive",
+            });
+        }
         if ema_alpha <= Decimal::ZERO || ema_alpha > Decimal::ONE {
             return Err(CoreError::InvalidParameter {
                 name: "ema_alpha",
                 reason: "ema_alpha must be in (0.0, 1.0]",
+            });
+        }
+        if inversion_stop_rate > Decimal::ZERO {
+            return Err(CoreError::InvalidParameter {
+                name: "inversion_stop_rate",
+                reason: "inversion_stop_rate must be non-positive",
             });
         }
         if round_trip_friction < Decimal::ZERO || fee_hurdle_mult < Decimal::ZERO {
@@ -70,37 +88,9 @@ impl FundingCarryConfig {
             inversion_stop_rate,
             round_trip_friction,
             fee_hurdle_mult,
-            min_decay_consecutive: 3,
-            perp_fraction: dec!(2) / dec!(3),
-            predictive_pre_exit_rate: dec!(-0.00005),
-            adl_tolerance_ratio: dec!(0.99),
+            ..Default::default()
         })
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CarryExitReason {
-    FundingInversionStop,
-    FundingDecayExit,
-    PredictivePreExit,
-    AdlDesyncEmergency,
-    EndOfSample,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SimulatedCarryTrade {
-    pub entry_idx: usize,
-    pub exit_idx: usize,
-    pub entry_time_ms: i64,
-    pub exit_time_ms: i64,
-    pub epochs_held: usize,
-    pub gross_return_pct: Decimal,
-    pub fee_pct_total: Decimal,
-    pub net_return_pct: Decimal,
-    pub gross_pnl_r: Decimal,
-    pub fee_r: Decimal,
-    pub net_pnl_r: Decimal,
-    pub exit_reason: CarryExitReason,
 }
 
 #[must_use]
@@ -110,17 +100,36 @@ pub fn update_funding_ema(prev_ema: Decimal, current_rate: Decimal, alpha: Decim
 
 #[must_use]
 pub fn funding_rate_to_apr(smoothed_rate: Decimal) -> Decimal {
-    smoothed_rate * CYCLES_PER_YEAR
+    funding_rate_to_apr_custom(smoothed_rate, DEFAULT_CYCLES_PER_YEAR)
+}
+
+#[must_use]
+pub fn funding_rate_to_apr_custom(smoothed_rate: Decimal, cycles_per_year: Decimal) -> Decimal {
+    smoothed_rate * cycles_per_year
 }
 
 #[must_use]
 pub fn check_adl_desync(spot_qty: Decimal, perp_qty: Decimal, tolerance_ratio: Decimal) -> bool {
-    let perp_abs = perp_qty.abs();
-    let min_perp_required = spot_qty.abs() * tolerance_ratio;
-    perp_abs < min_perp_required
+    if spot_qty <= Decimal::ZERO {
+        return false;
+    }
+    let effective_tol = if tolerance_ratio > Decimal::ZERO && tolerance_ratio <= Decimal::ONE {
+        tolerance_ratio
+    } else {
+        dec!(0.99)
+    };
+    perp_qty.abs() < (spot_qty * effective_tol)
 }
 
 pub fn calc_funding_apr_series(rates: &[Decimal], alpha: Decimal) -> Vec<Decimal> {
+    calc_funding_apr_series_custom(rates, alpha, DEFAULT_CYCLES_PER_YEAR)
+}
+
+pub fn calc_funding_apr_series_custom(
+    rates: &[Decimal],
+    alpha: Decimal,
+    cycles_per_year: Decimal,
+) -> Vec<Decimal> {
     if rates.is_empty() {
         return Vec::new();
     }
@@ -129,113 +138,11 @@ pub fn calc_funding_apr_series(rates: &[Decimal], alpha: Decimal) -> Vec<Decimal
         Some(&r) => r,
         None => Decimal::ZERO,
     };
-    apr.push(funding_rate_to_apr(ema));
+    apr.push(funding_rate_to_apr_custom(ema, cycles_per_year));
 
     for &rate in rates.iter().skip(1) {
         ema = update_funding_ema(ema, rate, alpha);
-        apr.push(funding_rate_to_apr(ema));
+        apr.push(funding_rate_to_apr_custom(ema, cycles_per_year));
     }
     apr
-}
-
-fn evaluate_epoch_exit(
-    cfg: &FundingCarryConfig,
-    rate: Decimal,
-    apr_val: Decimal,
-    decay_count: &mut usize,
-    gross_pct: Decimal,
-    fee_pct_total: Decimal,
-) -> Option<CarryExitReason> {
-    if rate < cfg.inversion_stop_rate {
-        return Some(CarryExitReason::FundingInversionStop);
-    }
-    if apr_val > cfg.exit_apr {
-        *decay_count = 0;
-        return None;
-    }
-    *decay_count += 1;
-    if *decay_count >= cfg.min_decay_consecutive && gross_pct >= fee_pct_total * cfg.fee_hurdle_mult
-    {
-        return Some(CarryExitReason::FundingDecayExit);
-    }
-    None
-}
-
-fn build_trade(
-    entry_idx: usize,
-    exit_idx: usize,
-    times: &[i64],
-    gross: Decimal,
-    fee: Decimal,
-    r_unit: Decimal,
-    reason: CarryExitReason,
-) -> SimulatedCarryTrade {
-    let net = gross - fee;
-    SimulatedCarryTrade {
-        entry_idx,
-        exit_idx,
-        entry_time_ms: *times.get(entry_idx).unwrap_or(&0),
-        exit_time_ms: *times.get(exit_idx).unwrap_or(&0),
-        epochs_held: exit_idx.saturating_sub(entry_idx) + 1,
-        gross_return_pct: gross,
-        fee_pct_total: fee,
-        net_return_pct: net,
-        gross_pnl_r: gross / r_unit,
-        fee_r: fee / r_unit,
-        net_pnl_r: net / r_unit,
-        exit_reason: reason,
-    }
-}
-
-pub fn simulate_carry_series(
-    cfg: &FundingCarryConfig,
-    rates: &[Decimal],
-    timestamps: &[i64],
-    r_unit: Decimal,
-) -> Result<Vec<SimulatedCarryTrade>, CoreError> {
-    if rates.is_empty() || rates.len() != timestamps.len() {
-        return Ok(Vec::new());
-    }
-    let apr = calc_funding_apr_series(rates, cfg.ema_alpha);
-    let fee_pct = cfg.perp_fraction * cfg.round_trip_friction;
-    let mut trades = Vec::new();
-    let mut in_pos = false;
-    let mut entry_idx = 0;
-    let mut decay_count = 0;
-
-    for i in 0..rates.len() {
-        let rate_i = *rates.get(i).unwrap_or(&Decimal::ZERO);
-        let apr_i = *apr.get(i).unwrap_or(&Decimal::ZERO);
-        if !in_pos {
-            if apr_i >= cfg.entry_apr {
-                in_pos = true;
-                entry_idx = i;
-                decay_count = 0;
-            }
-            continue;
-        }
-        let gross_pct = cfg.perp_fraction * rates[entry_idx..=i].iter().sum::<Decimal>();
-        if let Some(reason) =
-            evaluate_epoch_exit(cfg, rate_i, apr_i, &mut decay_count, gross_pct, fee_pct)
-        {
-            trades.push(build_trade(
-                entry_idx, i, timestamps, gross_pct, fee_pct, r_unit, reason,
-            ));
-            in_pos = false;
-        }
-    }
-    if in_pos && !rates.is_empty() {
-        let last = rates.len().saturating_sub(1);
-        let gross = cfg.perp_fraction * rates[entry_idx..=last].iter().sum::<Decimal>();
-        trades.push(build_trade(
-            entry_idx,
-            last,
-            timestamps,
-            gross,
-            fee_pct,
-            r_unit,
-            CarryExitReason::EndOfSample,
-        ));
-    }
-    Ok(trades)
 }

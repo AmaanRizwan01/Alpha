@@ -117,4 +117,40 @@ def test_carry_sizing_py():
 def test_adl_desync_py():
     assert not alpha_py.check_adl_desync_py(1.0, -1.0, 0.99)
     assert alpha_py.check_adl_desync_py(1.0, -0.98, 0.99)
+    # Flat portfolio or negative spot must not trigger desync
+    assert not alpha_py.check_adl_desync_py(0.0, 0.0, 0.99)
+    assert not alpha_py.check_adl_desync_py(-1.0, 0.0, 0.99)
+
+
+def test_carry_sizing_delta_neutral_with_basis():
+    # Capital 100.43 on disparate spot vs perp prices
+    res = alpha_py.calc_carry_sizing(
+        capital=100.43,
+        spot_price=65000.0,
+        perp_price=65020.0,
+        tick_size=0.10,
+        step_size=0.00001,
+        min_qty=0.00001,
+        min_notional=5.0,
+    )
+    assert res is not None
+    # Must enforce exact delta-neutral coin match
+    assert res.spot_qty == res.perp_qty
+
+
+def test_simulate_carry_arbitrage_validation():
+    # Invalid r_unit (<= 0) should raise ValueError
+    with pytest.raises(ValueError):
+        alpha_py.simulate_carry_arbitrage(
+            rates=[0.0001, 0.0002],
+            timestamps=[1000, 2000],
+            entry_apr=0.12,
+            exit_apr=0.022,
+            ema_alpha=0.20,
+            inversion_stop=-0.00015,
+            round_trip_friction=0.0032,
+            fee_hurdle_mult=1.0,
+            r_unit=0.0,
+        )
+
 

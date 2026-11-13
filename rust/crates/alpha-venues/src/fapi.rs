@@ -117,6 +117,42 @@ pub fn parse_premium_index(json_str: &str) -> Result<BinancePremiumIndexRecord, 
     })
 }
 
+pub fn parse_premium_index_list(
+    json_str: &str,
+) -> Result<Vec<BinancePremiumIndexRecord>, VenueError> {
+    let raw_list: Vec<RawPremiumIndex> =
+        serde_json::from_str(json_str).map_err(|e| VenueError::SerializationError {
+            reason: e.to_string(),
+        })?;
+
+    let mut records = Vec::with_capacity(raw_list.len());
+    for raw in raw_list {
+        let mark =
+            Decimal::from_str(&raw.mark_price).map_err(|e| VenueError::SerializationError {
+                reason: e.to_string(),
+            })?;
+        let index =
+            Decimal::from_str(&raw.index_price).map_err(|e| VenueError::SerializationError {
+                reason: e.to_string(),
+            })?;
+        let last_rate = Decimal::from_str(&raw.last_funding_rate).map_err(|e| {
+            VenueError::SerializationError {
+                reason: e.to_string(),
+            }
+        })?;
+
+        records.push(BinancePremiumIndexRecord {
+            symbol: raw.symbol,
+            mark_price: mark,
+            index_price: index,
+            last_funding_rate: last_rate,
+            next_funding_time: raw.next_funding_time,
+            time: raw.time,
+        });
+    }
+    Ok(records)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
@@ -155,6 +191,37 @@ mod tests {
         assert_eq!(index.index_price, dec!(65225.00));
         assert_eq!(index.last_funding_rate, dec!(0.00012000));
         assert_eq!(index.next_funding_time, 1700028800000);
+    }
+
+    #[test]
+    fn test_parse_premium_index_list_payload() {
+        let json = r#"[
+            {
+                "symbol":"BTCUSDT",
+                "markPrice":"65230.10",
+                "indexPrice":"65225.00",
+                "estimatedSettlePrice":"65228.00",
+                "lastFundingRate":"0.00012000",
+                "interestRate":"0.00010000",
+                "nextFundingTime":1700028800000,
+                "time":1700025000000
+            },
+            {
+                "symbol":"ETHUSDT",
+                "markPrice":"3400.50",
+                "indexPrice":"3400.00",
+                "estimatedSettlePrice":"3400.20",
+                "lastFundingRate":"0.00015000",
+                "interestRate":"0.00010000",
+                "nextFundingTime":1700028800000,
+                "time":1700025000000
+            }
+        ]"#;
+        let list = parse_premium_index_list(json).unwrap();
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].symbol, "BTCUSDT");
+        assert_eq!(list[1].symbol, "ETHUSDT");
+        assert_eq!(list[1].mark_price, dec!(3400.50));
     }
 
     #[test]

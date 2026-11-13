@@ -51,8 +51,13 @@ pub fn calculate_carry_sizing(
     let raw_spot_qty = spot_capital / spot_price;
     let raw_perp_qty = perp_notional_target / perp_price;
 
-    let spot_qty = spot_filter.round_qty_down(raw_spot_qty);
-    let perp_qty = perp_filter.round_qty_down(raw_perp_qty);
+    let raw_spot = spot_filter.round_qty_down(raw_spot_qty);
+    let raw_perp = perp_filter.round_qty_down(raw_perp_qty);
+    let candidate = raw_spot.min(raw_perp);
+    let matched_qty = spot_filter.round_qty_down(perp_filter.round_qty_down(candidate));
+
+    let spot_qty = matched_qty;
+    let perp_qty = matched_qty;
 
     let spot_notional = spot_qty * spot_price;
     let perp_notional = perp_qty * perp_price;
@@ -113,10 +118,33 @@ mod tests {
             _ => panic!("Expected approved for 10000"),
         };
 
-        // Ratio of spot notional should be ~100x
         let ratio = s10000.spot_notional / s100.spot_notional;
         assert!(ratio >= dec!(99.0) && ratio <= dec!(101.0));
         assert!(s100.spot_notional >= dec!(5.0));
+        assert_eq!(s100.spot_qty, s100.perp_qty);
+        assert_eq!(s10000.spot_qty, s10000.perp_qty);
+    }
+
+    #[test]
+    fn test_carry_sizing_delta_neutral_match_with_basis_and_different_filters() {
+        // Spot step is 0.00001, Futures step is 0.001
+        let spot_filter =
+            ExchangeFilter::new(dec!(0.10), dec!(0.00001), dec!(0.00001), dec!(5.0)).unwrap();
+        let perp_filter =
+            ExchangeFilter::new(dec!(0.10), dec!(0.001), dec!(0.001), dec!(5.0)).unwrap();
+
+        let spot_p = dec!(65000.0);
+        let perp_p = dec!(65050.0);
+
+        let v = calculate_carry_sizing(dec!(100.0), spot_p, perp_p, &spot_filter, &perp_filter)
+            .unwrap();
+        let s = match v {
+            CarrySizingVerdict::Approved(s) => s,
+            _ => panic!("Expected approved sizing"),
+        };
+        // Exactly equal coin quantities
+        assert_eq!(s.spot_qty, s.perp_qty);
+        assert_eq!(s.spot_qty, dec!(0.001));
     }
 
     #[test]

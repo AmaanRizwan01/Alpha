@@ -5,7 +5,7 @@
 - **Active Sprint:** Sprint 5.9 Rust FUNDING_CARRY Port & Proxmox Readiness (Branch: `feat/p5-s5.9-funding-carry-rust`)
 - **Git Branch:** `feat/p5-s5.9-funding-carry-rust`
 - **Environment:** Debian 12 LXC (CTID 101, `192.168.1.230`, Proxmox VE UAE node) & Windows 11 Dev Station (Python 3.11.9, Rustc 1.99.1)
-- **Status:** Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sizing.rs`), exposed via `alpha-py` (`carry.rs`), added `alpha-venues` Binance Futures models (`fapi.rs`), implemented live carry evaluation (`carry_signal.rs`) with predictive pre-exit, and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with Drill 6 in `alpha-node`. Live Proxmox LXC 101 Phase 5 paper burn-in (Day 3 of 56) undisturbed. All 87 cargo workspace tests and 41 pytest tests green.
+- **Status:** Ported `FUNDING_CARRY` strategy from Python research to pure Rust in `alpha-core` (`carry.rs`, `carry_sim.rs`, `carry_sizing.rs`), exposed via `alpha-py` (`carry.rs`), added `alpha-venues` Binance Futures models (`fapi.rs`), implemented live carry evaluation (`carry_signal.rs`) with predictive pre-exit and basis guard, and sub-100ms ADL Desync Watchdog (`adl_watchdog.rs`) with emergency market close order builder and Drill 6 in `alpha-node`. Resolved delta-neutral coin matching across basis, eliminated unchecked slice indexing and division by zero risks, enforced strict 250-line file limits, and added multi-symbol premium index parsing. Live Proxmox LXC 101 Phase 5 paper burn-in (Day 3 of 56) undisturbed. All 91 cargo workspace tests and 43 pytest tests green.
 
 ## Immediate Next Task
 1. Monitor live Phase 5 paper burn-in telemetry on Proxmox LXC 101 (Day 3 -> Day 4 of 56).

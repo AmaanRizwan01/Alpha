@@ -11,6 +11,7 @@
 )]
 
 pub mod carry;
+pub mod carry_sim;
 pub mod carry_sizing;
 pub mod chop_gate;
 pub mod error;
