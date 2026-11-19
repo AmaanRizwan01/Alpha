@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "rust/crates/alpha-types",
+    "rust/crates/alpha-core",
+    "rust/crates/alpha-py",
+    "rust/crates/alpha-venues",
+    "rust/crates/alpha-node",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+# internal crates
+alpha-types = { path = "rust/crates/alpha-types" }
+alpha-core = { path = "rust/crates/alpha-core" }
+alpha-venues = { path = "rust/crates/alpha-venues" }
+
+# approved lean dependencies per GEMINI.md
+rust_decimal = { version = "1.36", features = ["serde", "maths"] }
+rust_decimal_macros = "1.36"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+pyo3 = { version = "0.22", features = ["extension-module"] }
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+hex = "0.4"
+rusqlite = { version = "0.31", features = ["bundled"] }
+toml = "0.8"
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }

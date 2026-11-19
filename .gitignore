@@ -1,0 +1,56 @@
+# Environment & Secrets (NEVER COMMIT)
+.env
+*.env
+*.pem
+*.key
+
+# Internal Project Specs & Rules (Confidential)
+PLAN.md
+STATE.md
+GEMINI.md
+docs/gates/
+docs/STRATEGY.md
+docs/TRADINGVIEW.md
+
+# Private Strategies & Testing Drafts (Confidential Alpha)
+python/research/strategies/passed/
+python/research/strategies/drafts/
+configs/private/
+
+# Backtests (Folder tracked, files ignored)
+docs/backtests/passed/*
+!docs/backtests/passed/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# Rust
+/target/
+**/*.rs.bk
+
+# Data & Parquet Archives (Stored locally or on Proxmox, not in git)
+data/
+*.parquet
+*.csv
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+logs/
+
+# Media Assets (Only launch-video.gif is public for README, raw/source ignored)
+assets/source/
+assets/raw/
+*.mp4
+
+# IDE
+.idea/
+.vscode/
+*.swp
