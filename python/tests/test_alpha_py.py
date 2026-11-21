@@ -1,0 +1,157 @@
+import os
+from python.research.data_utils import resolve_data_path
+import polars as pl
+import pytest
+import alpha_py
+
+
+def test_kaufman_er_monotonic():
+    # perfectly monotonic prices must yield ER = 1.0
+    prices = [100.0 + float(i) for i in range(30)]
+    er = alpha_py.kaufman_er(prices, 24)
+    assert abs(er - 1.0) < 1e-4
+
+
+def test_donchian_channel():
+    highs = [10.0 + float(i) for i in range(25)]
+    lows = [5.0 + float(i) for i in range(25)]
+    hh, ll = alpha_py.donchian(highs, lows, 20)
+    assert hh == 34.0
+    assert ll == 10.0
+
+
+def test_atr_positive():
+    highs = [105.0] * 20
+    lows = [95.0] * 20
+    closes = [100.0] * 20
+    val = alpha_py.atr(highs, lows, closes, 14)
+    assert val > 0.0
+    assert abs(val - 10.0) < 1e-4
+
+
+def test_calc_position_size_scale_invariant():
+    # $100 capital, 1% risk ($1.00 risk budget)
+    # entry 50,000, stop 48,500 (1,500 stop distance = 3%)
+    # fees: 0 maker, 0.001 taker, 0.0005 slippage
+    # filter: tick=0.01, step=0.00001, min_qty=0.00001, min_notional=5.0
+    size = alpha_py.calc_position_size(
+        equity=100.0,
+        risk_fraction=0.01,
+        raw_entry=50000.0,
+        raw_stop=48500.0,
+        maker_fee=0.0,
+        taker_fee=0.001,
+        slippage=0.0005,
+        tick_size=0.01,
+        step_size=0.00001,
+        min_qty=0.00001,
+        min_notional=5.0,
+        min_stop_pct=0.022,
+    )
+    assert size.qty > 0.0
+    assert size.notional >= 5.0
+    assert size.stop_distance_pct >= 0.022
+    assert size.risk_quote <= 1.05
+
+
+def test_evaluate_chop_trend_pass():
+    # trend with large moves and high ER should pass
+    closes = [100.0 + float(i * 2) for i in range(35)]
+    highs = [c + 1.0 for c in closes]
+    lows = [c - 1.0 for c in closes]
+    verdict = alpha_py.evaluate_chop(
+        highs=highs,
+        lows=lows,
+        closes=closes,
+        er_period=24,
+        er_threshold=0.30,
+        atr_period=14,
+        min_atr_pct=0.009,
+    )
+    assert verdict is None  # Pass
+
+
+def test_parquet_data_integration():
+    parquet_path = str(resolve_data_path("data/raw", "BTCUSDT_1h.parquet"))
+    if not os.path.exists(parquet_path):
+        pytest.skip(f"{parquet_path} not found")
+
+    df = pl.read_parquet(parquet_path)
+    assert len(df) > 1000
+    closes = df["close"].head(100).to_list()
+    highs = df["high"].head(100).to_list()
+    lows = df["low"].head(100).to_list()
+
+    er = alpha_py.kaufman_er(closes, 24)
+    assert 0.0 <= er <= 1.0
+
+    atr_val = alpha_py.atr(highs, lows, closes, 14)
+    assert atr_val > 0.0
+
+
+def test_carry_apr_calculation_py():
+    rates = [0.0001, 0.0002]
+    aprs = alpha_py.calc_carry_apr(rates, 0.20)
+    assert len(aprs) == 2
+    assert abs(aprs[0] - 0.1095) < 1e-4
+    assert aprs[1] > aprs[0]
+
+
+def test_carry_sizing_py():
+    # Capital $100 on $65k BTC
+    res = alpha_py.calc_carry_sizing(
+        capital=100.0,
+        spot_price=65000.0,
+        perp_price=65000.0,
+        tick_size=0.10,
+        step_size=0.00001,
+        min_qty=0.00001,
+        min_notional=5.0,
+    )
+    assert res is not None
+    assert res.spot_qty > 0.0
+    assert res.perp_qty > 0.0
+    assert res.spot_notional >= 5.0
+    assert abs(res.spot_capital - (200.0 / 3.0)) < 0.1
+
+
+def test_adl_desync_py():
+    assert not alpha_py.check_adl_desync_py(1.0, -1.0, 0.99)
+    assert alpha_py.check_adl_desync_py(1.0, -0.98, 0.99)
+    # Flat portfolio or negative spot must not trigger desync
+    assert not alpha_py.check_adl_desync_py(0.0, 0.0, 0.99)
+    assert not alpha_py.check_adl_desync_py(-1.0, 0.0, 0.99)
+
+
+def test_carry_sizing_delta_neutral_with_basis():
+    # Capital 100.43 on disparate spot vs perp prices
+    res = alpha_py.calc_carry_sizing(
+        capital=100.43,
+        spot_price=65000.0,
+        perp_price=65020.0,
+        tick_size=0.10,
+        step_size=0.00001,
+        min_qty=0.00001,
+        min_notional=5.0,
+    )
+    assert res is not None
+    # Must enforce exact delta-neutral coin match
+    assert res.spot_qty == res.perp_qty
+
+
+def test_simulate_carry_arbitrage_validation():
+    # Invalid r_unit (<= 0) should raise ValueError
+    with pytest.raises(ValueError):
+        alpha_py.simulate_carry_arbitrage(
+            rates=[0.0001, 0.0002],
+            timestamps=[1000, 2000],
+            entry_apr=0.12,
+            exit_apr=0.022,
+            ema_alpha=0.20,
+            inversion_stop=-0.00015,
+            round_trip_friction=0.0032,
+            fee_hurdle_mult=1.0,
+            r_unit=0.0,
+        )
+
+
