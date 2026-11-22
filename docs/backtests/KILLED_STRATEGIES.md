@@ -10,10 +10,10 @@ During our research sprint, four candidate strategies were backtested on empiric
 
 | Strategy Candidate | Intended Premise | Total Trades | Win Rate | Profit Factor | Net EV (R) | Total Net R | Kill Reason |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`SESSION_IMBALANCES`** | Asian/London/NY session sweeps | 568 | 41.2% | 0.68 | **-0.198R** | **-112.55R** | Catastrophic fee drag on intraday scalps |
-| **`CROSS_SECTIONAL_MOMENTUM`** | Long top altcoins / short laggards | 328 | 36.8% | 0.74 | **-0.142R** | **-46.62R** | High rebalancing turnover & cross-asset beta crashes |
-| **`FLUSH_REVERSAL`** | Liquidation cascade mean reversion | 12 | 25.0% | 0.41 | **-0.219R** | **-2.63R** | $N < 100$ failure & falling knife tail risk |
-| **`COINTEGRATED_PAIRS`** | BTC/ETH statistical arbitrage spread | 13 | 38.5% | 0.58 | **-0.161R** | **-2.10R** | $N < 100$ failure & non-stationary ETH/BTC trend breakdown |
+| **`SESSION_IMBALANCES`** | Asian/London/NY session sweeps | 241 | 36.9% | 0.62 | **-0.245R** | **-59.01R** | Catastrophic fee drag on intraday scalps (-5.72 Sharpe) |
+| **`CROSS_SECTIONAL_MOMENTUM`** | Long top altcoins / short laggards | 328 | 36.8% | 0.74 | **-0.142R** | **-46.62R** | High rebalancing turnover & cross-asset beta crashes (0 trades on node; altcoins purged) |
+| **`FLUSH_REVERSAL`** | Liquidation cascade mean reversion | 9 | 44.4% | 0.68 | **-0.125R** | **-1.12R** | $N < 100$ failure ($N=9$) & falling knife tail risk |
+| **`COINTEGRATED_PAIRS`** | BTC/ETH statistical arbitrage spread | 123 | 29.3% | 0.80 | **-0.145R** | **-17.84R** | Non-stationary ETH/BTC trend breakdown & miserable 29.3% win rate |
 
 ---
 

@@ -2,8 +2,8 @@
 
 Executes all discovered plug-and-play strategies against historical data,
 computes scale-invariant metrics (Net EV, Profit Factor, Win Rate, Sharpe, Sortino,
-Max Drawdown, Trade Count, Exposure), computes cross-strategy correlation against H1,
-and produces a comprehensive side-by-side comparison matrix.
+Max Drawdown, Trade Count, Exposure), and produces a comprehensive side-by-side
+comparison matrix evaluating each strategy on its own standalone merits.
 
 Modular: Any strategy file can be deleted or plugged back in without touching this runner.
 """
@@ -94,51 +94,46 @@ def align_equity_returns(
 def format_markdown_matrix(performances: List[StrategyPerformance]) -> str:
     """Generate professional GitHub-flavored Markdown comparison matrix."""
     header = (
-        "| Strategy ID | Strategy Name | Primary Asset | Horizon | N Trades | Win Rate | "
-        "Net EV (R) | Profit Factor | Sharpe (Ann) | Sortino | Max DD (R) | Market Exp | Corr to Benchmark | Verdict |\n"
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+        "| Strategy ID | Primary Asset | Horizon | N Trades | Win Rate | "
+        "Net EV (R) | Total Net R | Start ($) | End ($) | Return (%) | CAGR | APY | "
+        "PF | Sharpe | Max DD (R) | Verdict |\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
     )
     rows = []
     for p in performances:
-        corr_val = getattr(p, "correlation_to_benchmark", getattr(p, "correlation_to_h1", 0.0))
         # Determine kill gate verdict based on EV, Profit Factor, Drawdown, and Sample Size
         if p.ev_net_r <= 0.0:
             if p.trade_count < 30:
                 verdict = "**KILL (Negative EV & Insufficient N)**"
             else:
                 verdict = "**KILL (Negative EV / Fee Drag)**"
-        elif p.strategy_id in ("VOLATILITY_BREAKOUT", "H1-BREAKOUT"):
-            verdict = "**BENCHMARK (PASS)**"
-        elif p.strategy_id == "FUNDING_CARRY" and p.profit_factor >= 1.50:
-            verdict = "**PASS (Low Frequency Arbitrage)**"
-        elif p.strategy_id == "MACRO_TREND" and p.profit_factor >= 1.50 and p.trade_count >= 100:
+        elif p.profit_factor >= 1.50 and p.trade_count >= 100:
             verdict = "**PASS (Production Ready)**"
-        elif p.ev_net_r > 0.05 and p.profit_factor >= 1.50 and p.max_drawdown_r <= 15.0:
-            if p.trade_count >= 100:
-                verdict = "**PASS (Production Ready)**"
-            else:
-                verdict = (
-                    "**PASS (Low Frequency Arbitrage)**"
-                    if ("Arbitrage" in p.strategy_name or "Carry" in p.strategy_name)
-                    else "**PASS (Conditional)**"
-                )
+        elif "Arbitrage" in p.strategy_name or "Carry" in p.strategy_name:
+            verdict = "**PASS (Low Frequency Arbitrage)**" if p.profit_factor >= 1.50 else "**PASS (Conditional)**"
+        elif p.ev_net_r > 0.0 and p.profit_factor >= 1.50:
+            verdict = "**PASS (Production Ready)**" if p.trade_count >= 100 else "**PASS (Conditional)**"
+        elif p.ev_net_r > 0.0:
+            verdict = "**PASS (Suboptimal)**"
         else:
             verdict = "**PASS (Conditional)**"
 
         row = (
             f"| **{p.strategy_id}** "
-            f"| {p.strategy_name} "
             f"| {p.primary_asset} "
             f"| {p.timeframe} "
             f"| {p.trade_count} "
             f"| {p.win_rate_pct:.1f}% "
             f"| **{p.ev_net_r:+.3f}R** "
+            f"| **{p.total_net_r:+.2f}R** "
+            f"| ${p.starting_balance:.2f} "
+            f"| **${p.ending_balance:.2f}** "
+            f"| {p.total_return_pct:+.1f}% "
+            f"| **{p.cagr_pct:.1f}%** "
+            f"| **{p.apy_pct:.1f}%** "
             f"| {p.profit_factor:.2f} "
             f"| {p.sharpe_ratio:.2f} "
-            f"| {p.sortino_ratio:.2f} "
             f"| {p.max_drawdown_r:.2f}R "
-            f"| {p.market_exposure_pct:.1f}% "
-            f"| {corr_val:+.2f} "
             f"| {verdict} |"
         )
         rows.append(row)
@@ -160,16 +155,10 @@ def run_comparative_suite(
     print(f"Data Source Directory: {data_dir.resolve()}")
     print(f"=================================================================\n")
 
-    # Order strategies so VOLATILITY_BREAKOUT is evaluated first as benchmark
-    bench_strat = next((s for s in strategies if s.strategy_id in ("VOLATILITY_BREAKOUT", "H1-BREAKOUT")), None)
-    other_strats = [s for s in strategies if s.strategy_id not in ("VOLATILITY_BREAKOUT", "H1-BREAKOUT")]
-
-    ordered_strats = ([bench_strat] if bench_strat else []) + other_strats
     results: List[StrategyPerformance] = []
-    equity_series_map: Dict[str, pl.DataFrame] = {}
     all_trade_records: List[dict] = []
 
-    for strat in ordered_strats:
+    for strat in strategies:
         print(f"[*] Running backtest for: {strat.strategy_id} ({strat.strategy_name})...")
         t0 = datetime.now()
         perf = strat.run_backtest(data_dir)
@@ -177,7 +166,6 @@ def run_comparative_suite(
         print(f"    Completed in {elapsed:.2f}s | N={perf.trade_count} | Net EV={perf.ev_net_r:+.3f}R | PF={perf.profit_factor:.2f}")
 
         results.append(perf)
-        equity_series_map[strat.strategy_id] = strat.get_equity_series()
 
         # Collect trade records for parquet export
         for t in strat.get_trades():
@@ -199,19 +187,6 @@ def run_comparative_suite(
                 "net_return_pct": t.net_return_pct,
                 "side": t.side,
             })
-
-    # Compute correlation against benchmark (VOLATILITY_BREAKOUT)
-    bench_id = bench_strat.strategy_id if bench_strat else "VOLATILITY_BREAKOUT"
-    bench_equity = equity_series_map.get(bench_id, pl.DataFrame())
-    for perf in results:
-        if perf.strategy_id == bench_id:
-            perf.correlation_to_h1 = 1.00
-            perf.correlation_to_benchmark = 1.00
-        else:
-            s_equity = equity_series_map.get(perf.strategy_id, pl.DataFrame())
-            corr = align_equity_returns(bench_equity, s_equity)
-            perf.correlation_to_h1 = corr
-            perf.correlation_to_benchmark = corr
 
     # Save comprehensive trade log
     if all_trade_records:

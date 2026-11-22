@@ -1,6 +1,5 @@
 """Core Strategy: Crypto Volatility Breakout (VOLATILITY_BREAKOUT).
 
-Formerly referred to as H1 Breakout.
 Captures trend-following momentum post-consolidation across 4h BTC/ETH spot.
 Implements Kaufman Efficiency Ratio (ER) chop gating, Donchian upper band breakout,
 taker volume expansion, and E0+E1+E2 exit policy (Chandelier trailing stop,
@@ -234,7 +233,6 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             equity_curve=self._equity_df,
             num_assets=len(assets),
         )
-        perf.correlation_to_h1 = 1.00  # Benchmark self-correlation
         return perf
 
     def get_trades(self) -> list[Trade]:

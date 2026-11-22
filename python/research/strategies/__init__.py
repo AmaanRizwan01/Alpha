@@ -2,7 +2,7 @@
 
 Discovers and instantiates quantitative strategies across evaluation tiers:
 - passed: Tier 1 active production-ready strategies (local & gitignored)
-- suboptimal: Tier 2 benchmark strategies (VOLATILITY_BREAKOUT)
+- suboptimal: Tier 2 strategies (VOLATILITY_BREAKOUT)
 - failed: Tier 3 archived candidates (SESSION_IMBALANCES, CROSS_SECTIONAL_MOMENTUM, etc.)
 - all: Every discovered strategy across the entire laboratory.
 

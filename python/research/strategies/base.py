@@ -1,11 +1,4 @@
-"""Base Strategy Protocol and Shared Analytics for Project Alpha Research.
-
-Enforces scale-invariant fee modeling, R-multiple accounting, and standardized
-performance metrics across all quantitative strategies.
-
-Plug-and-play design: Any strategy file can be dropped into or deleted from the
-strategies directory without breaking other strategies or the framework.
-"""
+"""Base Strategy Protocol and Shared Analytics for Project Alpha Research."""
 
 from __future__ import annotations
 
@@ -47,22 +40,27 @@ class StrategyPerformance:
     category: str
     primary_asset: str
     timeframe: str
-    trade_count: int
-    win_rate_pct: float
-    ev_net_r: float
-    ev_gross_r: float
-    fee_drag_r: float
-    total_net_r: float
-    profit_factor: float
-    sharpe_ratio: float
-    sortino_ratio: float
-    max_drawdown_r: float
-    max_drawdown_pct: float
-    market_exposure_pct: float
-    avg_bars_held: float
-    annualized_return_pct: float
+    trade_count: int = 0
+    win_rate_pct: float = 0.0
+    ev_net_r: float = 0.0
+    ev_gross_r: float = 0.0
+    fee_drag_r: float = 0.0
+    total_net_r: float = 0.0
+    profit_factor: float = 0.0
+    sharpe_ratio: float = 0.0
+    sortino_ratio: float = 0.0
+    max_drawdown_r: float = 0.0
+    max_drawdown_pct: float = 0.0
+    market_exposure_pct: float = 0.0
+    avg_bars_held: float = 0.0
+    annualized_return_pct: float = 0.0
     correlation_to_h1: float = 0.0
     correlation_to_benchmark: float = 0.0
+    starting_balance: float = 100.0
+    ending_balance: float = 100.0
+    total_return_pct: float = 0.0
+    cagr_pct: float = 0.0
+    apy_pct: float = 0.0
     extra_metrics: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -70,16 +68,13 @@ def compute_max_drawdown_r(pnl_r_series: list[float]) -> float:
     """Calculate peak-to-trough maximum drawdown in R-multiples."""
     if not pnl_r_series:
         return 0.0
-    peak = 0.0
-    cum = 0.0
-    max_dd = 0.0
+    peak = cum = max_dd = 0.0
     for r in pnl_r_series:
         cum += r
         if cum > peak:
             peak = cum
-        dd = peak - cum
-        if dd > max_dd:
-            max_dd = dd
+        if peak - cum > max_dd:
+            max_dd = peak - cum
     return max_dd
 
 
@@ -107,20 +102,6 @@ def compute_performance_metrics(
             category=category,
             primary_asset=primary_asset,
             timeframe=timeframe,
-            trade_count=0,
-            win_rate_pct=0.0,
-            ev_net_r=0.0,
-            ev_gross_r=0.0,
-            fee_drag_r=0.0,
-            total_net_r=0.0,
-            profit_factor=0.0,
-            sharpe_ratio=0.0,
-            sortino_ratio=0.0,
-            max_drawdown_r=0.0,
-            max_drawdown_pct=0.0,
-            market_exposure_pct=0.0,
-            avg_bars_held=0.0,
-            annualized_return_pct=0.0,
             extra_metrics=extra_metrics or {},
         )
 
@@ -170,12 +151,21 @@ def compute_performance_metrics(
         downside_std = 1e-6
     ann_sortino = (ev_net / downside_std) * np.sqrt(max(1.0, trades_per_year))
 
-    # Annualized return pct (assuming standard 1.0% risk per trade: return ~ total_net_r * 0.01)
+    # Annualization factor based on bar duration
     years = max(0.5, total_bars / bars_per_year)
-    ann_return_pct = (total_net_r * 1.0) / years  # 1.0% risk per R
+    ann_return_pct = (total_net_r * 1.0) / years
 
-    # Max Drawdown in %: max_dd_r * 1.0%
-    max_dd_pct = max_dd_r * 1.0
+    # Compounding simulation from $100 starting capital at 2.0% risk per trade
+    eq = 100.0
+    for t in sorted(trades, key=lambda x: x.exit_time):
+        eq *= (1.0 + max(-0.95, 0.02 * t.net_pnl_r))
+    tot_ret = ((eq - 100.0) / 100.0) * 100.0
+    cagr = (((eq / 100.0) ** (1.0 / years)) - 1.0) * 100.0 if eq > 0 else -100.0
+
+    # Expected APY from per-trade geometric edge compounded over annual trade frequency
+    r_mean = ev_net * 0.02
+    trades_per_yr = n / years
+    apy = (((1.0 + r_mean) ** trades_per_yr) - 1.0) * 100.0 if (1.0 + r_mean) > 0 else -100.0
 
     return StrategyPerformance(
         strategy_id=strategy_id,
@@ -193,10 +183,15 @@ def compute_performance_metrics(
         sharpe_ratio=ann_sharpe,
         sortino_ratio=ann_sortino,
         max_drawdown_r=max_dd_r,
-        max_drawdown_pct=max_dd_pct,
+        max_drawdown_pct=max_dd_r * 1.0,
         market_exposure_pct=market_exposure,
         avg_bars_held=avg_bars_held,
         annualized_return_pct=ann_return_pct,
+        starting_balance=100.0,
+        ending_balance=round(eq, 2),
+        total_return_pct=round(tot_ret, 2),
+        cagr_pct=round(cagr, 2),
+        apy_pct=round(apy, 2),
         extra_metrics=extra_metrics or {},
     )
 

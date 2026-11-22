@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-`VOLATILITY_BREAKOUT` (originally benchmark strategy `H1`) is a high-patience spot crypto trend-following system operating across Bitcoin (`BTCUSDT`) and Ethereum (`ETHUSDT`).
+`VOLATILITY_BREAKOUT` is a high-patience spot crypto trend-following system operating across Bitcoin (`BTCUSDT`) and Ethereum (`ETHUSDT`).
 
 * **Core Premise:** Crypto markets spend 70%+ of their time in non-profitable mean-reverting chop. This strategy sits 100% flat in cash until explosive volume breaks a 20-period Donchian channel confirmed by the Kaufman Efficiency Ratio ($\text{ER}_{24} \ge 0.30$). It then rides the breakout using a 4-phase ratcheting trailing stop.
 * **Asymmetric Risk Profile:** Classic trend-following asymmetry. Low win rate (32.7% to 36.4%) offset by a high payoff ratio (3.07:1), producing a statistically verified positive net expected value of **+0.156R per trade**.
@@ -16,16 +16,21 @@ Tested under conservative friction (8 bps maker entry, 10 bps taker exit, 5 bps 
 | Metric | 10-Year Full View (2016–2026) | 5.7-Year Pure 4h (2021–2026) | Unseen Out-of-Sample (2022–2026) | Context |
 | :--- | :--- | :--- | :--- | :--- |
 | **Initial Starting Capital** | **$100.00** | **$100.00** | **$100.00** | Baseline starting capital |
-| **Final Ending Capital** | **$280.25** | **$128.25** | **$133.16** | Capital growth net of all taker fees |
-| **Total Net Profit ($)** | **+$180.25** | **+$28.25** | **+$33.16** | Net of exchange taker fee & slippage |
-| **Total Net Return (%)** | **+180.25%** | **+28.25%** | **+33.16%** | Compounded capital return |
-| **Annualized Return (CAGR)** | **10.85% / yr** | **4.45% / yr** | **5.90% / yr** | Steady low-frequency trend capture |
-| **Maximum Drawdown (%)** | **-8.96%** | **-8.96%** | **-8.96%** | **Strictly contained below 9%** |
-| **Win Rate (%)** | **34.8%** | **32.74%** | **36.36%** | Positive skewness trend distribution |
-| **Profit Factor (PF)** | **1.62** | **1.49** | **1.51** | Positive mathematical expectancy |
-| **Payoff Ratio (Win / Loss)**| **3.20 : 1** | **3.07 : 1** | **3.05 : 1** | Winners are 3x larger than losers |
-| **Net Expected Value (EV)** | **+0.172R** | **+0.156R** | **+0.165R** | Verified positive net edge per trade |
-| **Market Exposure** | ~6.0% of time | ~6.0% of time | ~6.2% of time | Sits in cash 94% of the time |
+| **Final Ending Capital** | **$378.30** | **$128.25** | **$133.16** | Capital growth net of all taker fees |
+| **Total Net Profit ($)** | **+$278.30** | **+$28.25** | **+$33.16** | Net of exchange taker fee & slippage |
+| **Total Net Return (%)** | **+278.30%** | **+28.25%** | **+33.16%** | Compounded capital return |
+| **Annualized Return (CAGR)** | **14.23% / yr** | **4.45% / yr** | **5.90% / yr** | Steady low-frequency trend capture |
+| **Maximum Drawdown (R)** | **9.35R** | **8.96R** | **8.96R** | Controlled scale-invariant drawdown |
+| **Maximum Drawdown (%)** | **-17.19%** | **-8.96%** | **-8.96%** | Strictly contained drawdown across 10 years |
+| **Total Trades Executed** | **288 trades** (96W / 192L) | 148 trades | 113 trades | Full empirical 4h trade sample |
+| **Win Rate (%)** | **33.33%** | **32.74%** | **36.36%** | Positive skewness trend distribution |
+| **Profit Factor (PF)** | **1.83** | **1.49** | **1.51** | Strong positive mathematical expectancy |
+| **Payoff Ratio (Win / Loss)**| **3.67 : 1** | **3.07 : 1** | **3.05 : 1** | Winners are 3.7x larger than losers |
+| **Net Expected Value (EV)** | **+0.251R** | **+0.156R** | **+0.165R** | Verified positive net edge per trade |
+| **Total Net R Harvested** | **+72.19R** | **+23.08R** | **+18.64R** | Pure directional alpha |
+| **Sharpe Ratio (Annualized)** | **0.99** | **0.85** | **0.88** | Risk-adjusted return |
+| **Sortino Ratio (Annualized)** | **3.98** | **3.12** | **3.24** | Downside protection ratio |
+| **Market Exposure** | **6.5% of time** | ~6.0% of time | ~6.2% of time | Sits in cash 93.5% of the time |
 
 ---
 

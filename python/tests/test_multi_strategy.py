@@ -163,7 +163,7 @@ def test_strategy_independence():
     assert p1.trade_count == p2.trade_count and np.isclose(p1.ev_net_r, p2.ev_net_r)
 
 
-def test_plug_and_play_deletion_benchmark():
+def test_plug_and_play_deletion_suboptimal():
     remaining = [s for s in load_all_strategies() if s.strategy_id != "VOLATILITY_BREAKOUT"]
     table = format_markdown_matrix([s.run_backtest(DATA_DIR) for s in remaining])
     assert "VOLATILITY_BREAKOUT" not in table and "FUNDING_CARRY" in table

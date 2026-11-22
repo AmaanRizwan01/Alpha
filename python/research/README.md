@@ -25,8 +25,8 @@ python/research/
 │   ├── __init__.py                # Tiered strategy registry (load_all_strategies, get_available_strategies)
 │   ├── base.py                    # BaseStrategy abstract specification & Trade / Performance schemas
 │   ├── passed/                    # Production-ready active strategies (Private & gitignored)
-│   ├── suboptimal/                # Benchmark strategies (Passed gates, reference baselines)
-│   │   └── volatility_breakout/   # 4h Crypto Donchian + KER Breakout Benchmark (H1)
+│   ├── suboptimal/                # Suboptimal strategies (Passed gates, lower profit factor)
+│   │   └── volatility_breakout/   # 4h Crypto Donchian + KER Breakout (Suboptimal)
 │   └── failed/                    # Archived candidates for research & reproducibility (Public)
 │       ├── README.md              # Quantitative autopsy & kill reasons summary
 │       ├── session_imbalances/    # Asian/London/NY session sweeps (killed: fee drag)
@@ -92,10 +92,10 @@ To add a new experimental strategy to the laboratory:
 
 ---
 
-## 5. Public Benchmark Results
+## 5. Public Suboptimal Reference Results
 
 | Strategy ID | Class / File | Asset Universe | Horizon | Net EV (R) | Profit Factor | Status |
 |---|---|---|---|---|---|---|
-| **VOLATILITY_BREAKOUT** | `VolatilityBreakoutStrategy` | `BTC/USDT`, `ETH/USDT` | 4h | **+0.156R** | 1.49 | **Reference Benchmark (H1)** |
+| **VOLATILITY_BREAKOUT** | `VolatilityBreakoutStrategy` | `BTC/USDT`, `ETH/USDT` | 4h | **+0.156R** | 1.49 | **PASS (Suboptimal)** |
 
 For detailed financial breakdowns ($100 capital trajectory, win rates, yearly/monthly metrics, loss attribution), see [`docs/backtests/`](file:///c:/Coding/alpha/docs/backtests/).
